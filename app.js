@@ -187,6 +187,8 @@ V.home = () => {
     <div class="bar"><i style="width:${L.pct}%"></i></div>
   </div>
 
+  <a class="roomcard" href="#room"><span class="rc-ic">📞</span><span class="grow"><b>গ্রুপ রুম</b><small>এই গ্রুপ রুমে ঢুকে গ্রুপ তৈরি করে আপনার বন্ধুদের সাথে লাইভ কথা বলুন</small></span><span class="rc-go">→</span></a>
+
   <div class="card">
     <div class="row between nowrap"><div><div class="eyebrow">আজকের ওয়ার্কআউট</div><h2 class="h2">${done ? 'আজকের কাজ শেষ!' : '৪টা ধাপ · প্রায় ১০ মিনিট'}</h2></div>${done ? '<span class="done-badge">✓ শেষ</span>' : ''}</div>
     ${done ? `<p class="muted small" style="margin-top:6px">দারুণ! কাল আবার আসুন, স্ট্রিক যেন না ভাঙে। চাইলে আরেকবার নতুন প্রশ্নে প্র্যাকটিস করুন।</p>
@@ -990,77 +992,95 @@ function fbInit(){
 }
 const CODE_ABC = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const newCode = () => Array.from({length:6}, () => CODE_ABC[Math.floor(Math.random()*CODE_ABC.length)]).join('');
-const cleanCode = s => String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+const cleanCode = s => { s = String(s || ''); const m = s.match(/#room\/([A-Za-z0-9]{6})/); if (m) s = m[1]; return s.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6); };
 const AV_COLORS = ['#127A7A','#D4553A','#6650C8','#2A6FC9','#B9740A','#16875B','#C2255C','#3D5A80'];
 const avColor = uid => AV_COLORS[[...String(uid)].reduce((a, c) => a + c.charCodeAt(0), 0) % AV_COLORS.length];
-const avatar = (name, uid) => `<span class="av" style="background:${avColor(uid)}" aria-hidden="true">${esc((name || '?').trim().charAt(0).toUpperCase() || '?')}</span>`;
+const avatar = (name, uid, big) => `<span class="av${big ? ' big' : ''}" style="background:${avColor(uid)}" aria-hidden="true">${esc((name || '?').trim().charAt(0).toUpperCase() || '?')}</span>`;
 const hhmm = t => { if (!t) return ''; const d = new Date(t); return bn(`${d.getHours() % 12 || 12}:${String(d.getMinutes()).padStart(2,'0')}`) + (d.getHours() < 12 ? ' AM' : ' PM'); };
 const roomLink = code => `${SITE}#room/${code}`;
-const voiceLink = code => `https://meet.jit.si/EnglishGym-${code}-practice-room`;
-const QUICK = ['Hi everyone! 👋', 'How are you today?', 'Can you repeat that, please?', 'What does that word mean?', 'Let\'s practice speaking!', 'Great job! 👏', 'I\'m joining the voice room.', 'See you tomorrow!'];
+const myName = () => { if (!P.name) { P.name = 'Guest ' + Math.floor(100 + Math.random()*900); save(); } return P.name; };
+const QUICK = ['Hi everyone! 👋', 'How are you today?', 'Can you hear me?', 'Can you repeat that, please?', 'What does that word mean?', 'Great job! 👏', 'See you tomorrow!'];
 const SEND = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4z"/></svg>';
+const IC = {
+  mic:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>',
+  micOff:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 2l20 20M9 9v2a3 3 0 0 0 5 2.2M15 9.3V6a3 3 0 0 0-5.7-1.3M19 11a7 7 0 0 1-1.1 3.8M5 11a7 7 0 0 0 11.4 5.4M12 18v3"/></svg>',
+  cam:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="6" width="14" height="12" rx="2"/><path d="M16 10l6-3v10l-6-3z"/></svg>',
+  camOff:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 2l20 20M16 16H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h2M10 6h4a2 2 0 0 1 2 2v3l6-3v10"/></svg>',
+  hang:'<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 9c-2.6 0-5 .6-7.2 1.7-.8.4-1.3 1.2-1.3 2.1v2.4c0 .6.6 1.1 1.2.9l3.6-1.2c.5-.2.8-.6.8-1.1v-1.6c1.9-.6 4-.6 5.8 0v1.6c0 .5.3.9.8 1.1l3.6 1.2c.6.2 1.2-.3 1.2-.9v-2.4c0-.9-.5-1.7-1.3-2.1C17 9.6 14.6 9 12 9z"/></svg>',
+  wa:'<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1l-.8 1c-.1.2-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.2-.4.2-.4.7-1.2.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.7 11.8 11.8 0 0 0 4.5 4c1.7.7 2.4.8 3.2.6.5-.1 1.5-.6 1.7-1.2.2-.6.2-1.1.2-1.2-.1-.1-.3-.2-.5-.3z"/></svg>',
+  ms:'<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2C6.4 2 2 6.1 2 11.7c0 2.9 1.2 5.5 3.2 7.3v3.4l3.1-1.7c1.1.3 2.3.5 3.7.5 5.6 0 10-4.1 10-9.6S17.6 2 12 2zm1 12.9l-2.6-2.7-5 2.7 5.5-5.8 2.6 2.7 4.9-2.7z"/></svg>',
+  paste:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg>'
+};
 
-let RM = { phase:'lobby', code:'', meta:null, msgs:[], members:{}, battle:null, tab:'chat', err:'', play:null, refs:[], lastSend:0, draft:'' };
-function roomLeave(){
-  RM.refs.forEach(([ref, ev, fn]) => { try { ref.off(ev, fn); } catch {} });
-  RM.refs = [];
-  if (FB && RM.code && RM.phase === 'room') { try { FB.db.ref(`rooms/${RM.code}/members/${FB.uid}`).remove(); } catch {} }
-  RM = { ...RM, phase:'lobby', code:'', meta:null, msgs:[], members:{}, battle:null, play:null };
-}
+let RM = { phase:'lobby', code:'', meta:null, msgs:[], members:{}, battle:null, tab:'call', err:'', play:null, refs:[], lastSend:0, draft:'', fresh:false };
 function rememberRoom(code, name){ P.rooms = [{ code, name }].concat((P.rooms || []).filter(r => r.code !== code)).slice(0, 6); save(); }
 const fbErr = e => { const m = String(e && (e.code || e.message) || e);
   if (m.includes('nocfg')) return 'গ্রুপ রুম এখনো সেট আপ হয়নি।';
   if (m.includes('load') || m.includes('network')) return 'ইন্টারনেট সংযোগ দেখে আবার চেষ্টা করুন।';
   if (m.includes('admin-restricted') || m.includes('operation-not-allowed')) return 'সার্ভারে Anonymous লগইন চালু নেই।';
   if (m.includes('unauthorized-domain')) return 'এই ওয়েবসাইট এখনো অনুমোদিত না (Authorized domains)।';
-  if (m.toLowerCase().includes('permission')) return 'অনুমতি নেই। রুমের কোডটা আবার দেখুন।';
+  if (m.toLowerCase().includes('permission')) return 'অনুমতি নেই। একটু পরে আবার চেষ্টা করুন।';
   return 'কিছু একটা সমস্যা হয়েছে, একটু পরে আবার চেষ্টা করুন।'; };
 
+function roomLeave(){
+  callLeave();
+  RM.refs.forEach(([ref, ev, fn]) => { try { ref.off(ev, fn); } catch {} });
+  RM.refs = [];
+  if (FB && RM.code && RM.phase === 'room') { try { FB.db.ref(`rooms/${RM.code}/members/${FB.uid}`).remove(); } catch {} }
+  RM = { ...RM, phase:'lobby', code:'', meta:null, msgs:[], members:{}, battle:null, play:null, fresh:false };
+}
 async function roomCreate(){
-  const name = ($('#rmName')?.value || '').trim(); const roomName = ($('#rmTitle')?.value || '').trim() || `${name || 'আমার'} এর গ্রুপ`;
-  if (!name) { toast('আগে আপনার নাম লিখুন'); $('#rmName')?.focus(); return; }
-  P.name = name.slice(0, 24); save();
+  const nm = ($('#rmName')?.value || '').trim(); if (nm) { P.name = nm.slice(0, 24); save(); }
+  const name = myName();
   RM.phase = 'loading'; render();
   try {
     const fb = await fbInit();
     for (let tries = 0; tries < 4; tries++) {
       const code = newCode();
-      try { await fb.db.ref(`rooms/${code}/meta`).set({ name: roomName.slice(0, 40), owner: fb.uid, created: fb.TS }); rememberRoom(code, roomName.slice(0, 40)); location.hash = '#room/' + code; return; }
+      try { await fb.db.ref(`rooms/${code}/meta`).set({ name: `${name} এর গ্রুপ`.slice(0, 40), owner: fb.uid, created: fb.TS }); rememberRoom(code, `${name} এর গ্রুপ`); RM.fresh = true; location.hash = '#room/' + code; return; }
       catch (e) { if (!String(e && e.code || e).toLowerCase().includes('permission') || tries === 3) throw e; }
     }
   } catch (e) { RM.phase = 'error'; RM.err = fbErr(e); render(); }
 }
+function joinFromInput(){
+  const nm = ($('#rmName')?.value || '').trim(); if (nm) { P.name = nm.slice(0, 24); save(); }
+  const c = cleanCode($('#rmCode')?.value);
+  if (c.length !== 6) { toast('৬ অক্ষরের গ্রুপ কোডটা দিন'); $('#rmCode')?.focus(); return; }
+  location.hash = '#room/' + c;
+}
 async function roomEnter(code){
-  roomLeave(); RM.code = code; RM.phase = 'loading'; RM.tab = 'chat'; render();
+  const fresh = RM.fresh; roomLeave(); RM.fresh = fresh; RM.code = code; RM.phase = 'loading'; RM.tab = 'call'; render();
   try {
     const fb = await fbInit();
     const snap = await fb.db.ref(`rooms/${code}/meta`).once('value');
-    if (!snap.exists()) { RM.phase = 'error'; RM.err = `"${code}" কোডের কোনো গ্রুপ পাওয়া যায়নি। কোডটা আবার দেখুন।`; render(); return; }
     if (RM.code !== code) return;
-    RM.meta = snap.val(); RM.phase = P.name ? 'room' : 'name'; rememberRoom(code, RM.meta.name);
-    if (RM.phase === 'room') roomListen(); else render();
+    if (!snap.exists()) { RM.phase = 'error'; RM.err = `"${code}" কোডের কোনো গ্রুপ পাওয়া যায়নি। কোডটা আবার দেখুন।`; render(); return; }
+    RM.meta = snap.val(); rememberRoom(code, RM.meta.name);
+    if (!P.name) { RM.phase = 'name'; render(); return; }
+    RM.phase = 'room'; roomListen();
   } catch (e) { RM.phase = 'error'; RM.err = fbErr(e); render(); }
 }
 function roomListen(){
   const fb = FB, base = fb.db.ref(`rooms/${RM.code}`);
   const me = base.child(`members/${fb.uid}`);
-  me.set({ name: P.name, t: fb.TS }).then(() => me.onDisconnect().remove()).catch(() => {});
+  me.set({ name: myName(), t: fb.TS }).then(() => me.onDisconnect().remove()).catch(() => {});
   const on = (ref, ev, fn) => { ref.on(ev, fn, err => { RM.phase = 'error'; RM.err = fbErr(err); render(); }); RM.refs.push([ref, ev, fn]); };
-  const msgsRef = base.child('messages').limitToLast(80);
-  on(msgsRef, 'child_added', s => { const m = s.val(); if (!m) return; RM.msgs.push({ id: s.key, ...m }); appendMsg(RM.msgs[RM.msgs.length - 1]); });
+  on(base.child('messages').limitToLast(80), 'child_added', s => { const m = s.val(); if (!m) return; RM.msgs.push({ id: s.key, ...m }); appendMsg(RM.msgs[RM.msgs.length - 1]); bumpUnread(m); });
   on(base.child('members'), 'value', s => { RM.members = s.val() || {}; updateMembers(); updateBoard(); });
   on(base.child('battle'), 'value', s => { RM.battle = s.val(); updateBoard(); });
+  on(base.child('call'), 'value', s => { CALL.list = s.val() || {}; callSync(); });
   render();
 }
 async function sendMsg(text){
   text = String(text || '').trim().slice(0, 500); if (!text || !FB || RM.phase !== 'room') return;
-  if (Date.now() - RM.lastSend < 1200) { toast('একটু ধীরে লিখুন 🙂'); return; }
+  if (Date.now() - RM.lastSend < 1000) { toast('একটু ধীরে লিখুন 🙂'); return; }
   RM.lastSend = Date.now();
-  try { await FB.db.ref(`rooms/${RM.code}/messages`).push({ uid: FB.uid, name: P.name, text, t: FB.TS }); }
+  try { await FB.db.ref(`rooms/${RM.code}/messages`).push({ uid: FB.uid, name: myName(), text, t: FB.TS }); }
   catch (e) { toast(fbErr(e)); }
 }
+let unread = 0;
+function bumpUnread(m){ if (RM.tab === 'chat' || !FB || m.uid === FB.uid) return; unread++; const b = $('#unread'); if (b) { b.textContent = bn(unread); b.hidden = false; } }
 const msgHTML = m => {
-  if (m.sys) return `<div class="sys">${esc(m.text)}</div>`;
   const mine = FB && m.uid === FB.uid;
   return `<div class="msg ${mine ? 'me' : ''}">${mine ? '' : avatar(m.name, m.uid)}<div class="bub"><span class="nm">${esc(m.name)}</span><span class="tx">${esc(m.text)}</span><span class="tm">${hhmm(m.t)}<button data-act="say" data-t="${esc(m.text)}" aria-label="শুনুন">🔊</button></span></div></div>`;
 };
@@ -1072,72 +1092,257 @@ function appendMsg(m){
   if (near || (FB && m.uid === FB.uid)) box.scrollTop = box.scrollHeight;
 }
 function membersHTML(){ const list = Object.entries(RM.members || {});
-  return list.length ? list.map(([uid, m]) => `<span class="member">${avatar(m.name, uid)}${esc(m.name)}${FB && uid === FB.uid ? ' (আপনি)' : ''}<span class="dot" aria-label="অনলাইন"></span></span>`).join('') : '<span class="small muted">কেউ অনলাইনে নেই</span>'; }
+  return list.length ? list.map(([uid, m]) => `<span class="member">${avatar(m.name, uid)}${esc(m.name)}${FB && uid === FB.uid ? ' (আপনি)' : ''}${CALL.list[uid] ? ' 📞' : ''}<span class="dot" aria-label="অনলাইন"></span></span>`).join('') : '<span class="small muted">কেউ অনলাইনে নেই</span>'; }
 function updateMembers(){ const el = $('#rmMembers'); if (el) el.innerHTML = membersHTML(); const c = $('#rmCount'); if (c) c.textContent = bn(Object.keys(RM.members || {}).length); }
 
-/* live battle */
+/* ----- sharing ----- */
+const isMobile = () => /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+const inviteText = code => `🎙️ চলো English Gym এ একসাথে ইংরেজিতে কথা বলি!\n\nগ্রুপ কোড: ${code}\n\nএই লিংকে চাপ দিলেই সরাসরি গ্রুপে চলে আসবে:\n${roomLink(code)}`;
+const shareRow = code => `<div class="sharegrid">
+  <a class="sbtn wa" href="https://wa.me/?text=${encodeURIComponent(inviteText(code))}" target="_blank" rel="noopener">${IC.wa}<span>WhatsApp</span></a>
+  <button class="sbtn ms" data-act="shMessenger">${IC.ms}<span>Messenger</span></button>
+  <button class="sbtn cp" data-act="shCopy">${ICON.copy}<span>কোড কপি</span></button>
+  <button class="sbtn ot" data-act="shMore">${ICON.share}<span>অন্যান্য</span></button></div>`;
+const sharePanel = code => `<div class="tpanel invite"><div class="eyebrow">বন্ধুদের ডাকুন</div>
+  <div class="bigcode" aria-label="গ্রুপ কোড">${esc(code)}</div>
+  <p class="small muted center">এই কোডটা বন্ধুদের পাঠান। তারা English Gym এ <b>গ্রুপ রুম</b> এ গিয়ে কোড পেস্ট করলেই চলে আসবে।</p>
+  ${shareRow(code)}</div>`;
+function openShareModal(){
+  $('#modalHost').innerHTML = `<div class="modal-bg" data-act="closeModal"><div class="modal t-room" role="dialog" aria-label="আমন্ত্রণ"><div class="row between"><b>বন্ধুদের ডাকুন</b><button class="btn ghost sm" data-act="closeModal">বন্ধ</button></div>
+    <div class="bigcode">${esc(RM.code)}</div>${shareRow(RM.code)}</div></div>`;
+}
+
+/* ================= CALLS (WebRTC, peer to peer) ================= */
+const MAX_CALL = 6;
+const CALL = { on:false, video:false, mic:true, local:null, vtrack:null, peers:{}, list:{}, sigRef:null, sigFn:null, ice:null, starting:false };
+async function iceServers(){
+  if (CALL.ice) return CALL.ice;
+  const list = [{ urls: ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302'] }];
+  if (Array.isArray(CFG.turn) && CFG.turn.length) { CALL.ice = list.concat(CFG.turn); return CALL.ice; }
+  try { /* free public relay (Open Relay, static auth) for networks where direct connection fails */
+    const username = `${Math.floor(Date.now()/1000) + 24*3600}:englishgym`;
+    const key = await crypto.subtle.importKey('raw', new TextEncoder().encode('openrelayprojectsecret'), { name:'HMAC', hash:'SHA-1' }, false, ['sign']);
+    const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(username));
+    const credential = btoa(String.fromCharCode(...new Uint8Array(sig)));
+    list.push({ urls: ['turn:staticauth.openrelay.metered.ca:80', 'turn:staticauth.openrelay.metered.ca:443', 'turn:staticauth.openrelay.metered.ca:443?transport=tcp'], username, credential });
+  } catch {}
+  CALL.ice = list; return list;
+}
+const VID = { width:{ ideal:480 }, height:{ ideal:360 }, frameRate:{ ideal:15 }, facingMode:'user' };
+const sigSend = (to, msg) => FB.db.ref(`rooms/${RM.code}/sig/${to}`).push({ from: FB.uid, ...msg }).catch(() => {});
+const mediaErr = e => { const n = e && e.name; return n === 'NotAllowedError' ? 'মাইক্রোফোন/ক্যামেরার অনুমতি দিন। ঠিকানার পাশের 🔒 আইকনে চেপে Allow করুন।' : n === 'NotFoundError' ? 'ফোনে মাইক্রোফোন/ক্যামেরা পাওয়া যায়নি।' : 'মাইক্রোফোন চালু করা যায়নি। Chrome বা Safari ব্যবহার করুন।'; };
+async function callJoin(video){
+  if (CALL.on || CALL.starting) return;
+  if (!window.RTCPeerConnection || !navigator.mediaDevices) { toast('এই ব্রাউজারে কল করা যায় না। Chrome বা Safari ব্যবহার করুন।'); return; }
+  if (Object.keys(CALL.list).length >= MAX_CALL) { toast(`কলে সর্বোচ্চ ${bn(MAX_CALL)} জন থাকতে পারে`); return; }
+  CALL.starting = true; renderCall();
+  try {
+    CALL.local = await navigator.mediaDevices.getUserMedia({ audio:{ echoCancellation:true, noiseSuppression:true, autoGainControl:true }, video: video ? VID : false });
+  } catch (e) { CALL.starting = false; renderCall(); toast(mediaErr(e)); return; }
+  CALL.vtrack = CALL.local.getVideoTracks()[0] || null; CALL.video = !!CALL.vtrack; CALL.mic = true;
+  await iceServers();
+  CALL.on = true; CALL.starting = false;
+  CALL.sigRef = FB.db.ref(`rooms/${RM.code}/sig/${FB.uid}`);
+  CALL.sigFn = s => { const m = s.val(); s.ref.remove().catch(() => {}); if (m) onSignal(m); };
+  await CALL.sigRef.remove().catch(() => {});
+  CALL.sigRef.on('child_added', CALL.sigFn);
+  const me = FB.db.ref(`rooms/${RM.code}/call/${FB.uid}`);
+  await me.set({ name: myName(), video: CALL.video, mic: true, t: FB.TS }).catch(e => toast(fbErr(e)));
+  me.onDisconnect().remove();
+  sendMsg(`📞 ${myName()} ${video ? 'ভিডিও' : 'অডিও'} কলে যোগ দিয়েছে`);
+  RM.tab = 'call'; render(); callSync();
+}
+function callLeave(){
+  if (!CALL.on && !CALL.local) return;
+  Object.keys(CALL.peers).forEach(closePeer);
+  if (CALL.local) CALL.local.getTracks().forEach(t => t.stop());
+  if (CALL.sigRef && CALL.sigFn) CALL.sigRef.off('child_added', CALL.sigFn);
+  if (FB && RM.code) FB.db.ref(`rooms/${RM.code}/call/${FB.uid}`).remove().catch(() => {});
+  Object.assign(CALL, { on:false, video:false, mic:true, local:null, vtrack:null, peers:{}, sigRef:null, sigFn:null, starting:false });
+}
+function makePeer(uid){
+  const pc = new RTCPeerConnection({ iceServers: CALL.ice || [] });
+  const peer = { pc, uid, stream: new MediaStream(), queue: [], state:'connecting', retries:0 };
+  CALL.peers[uid] = peer;
+  pc.onicecandidate = e => { if (e.candidate) sigSend(uid, { type:'ice', data: JSON.stringify(e.candidate.toJSON ? e.candidate.toJSON() : e.candidate) }); };
+  pc.ontrack = e => { if (!peer.stream.getTracks().includes(e.track)) peer.stream.addTrack(e.track); e.track.onunmute = () => paintTile(uid); paintTile(uid); };
+  pc.onconnectionstatechange = () => {
+    peer.state = pc.connectionState; paintTile(uid);
+    if (pc.connectionState === 'failed' && FB.uid < uid && peer.retries < 2) { peer.retries++; try { pc.restartIce(); offerTo(uid, true); } catch {} }
+  };
+  return peer;
+}
+function attachLocal(pc){
+  const audio = CALL.local && CALL.local.getAudioTracks()[0];
+  pc.getTransceivers().forEach(t => {
+    const kind = t.receiver.track && t.receiver.track.kind;
+    if (kind === 'audio') { t.direction = 'sendrecv'; t.sender.replaceTrack(audio || null); }
+    if (kind === 'video') { t.direction = 'sendrecv'; t.sender.replaceTrack(CALL.vtrack || null); }
+  });
+}
+async function offerTo(uid, restart){
+  let peer = CALL.peers[uid];
+  if (!peer) { peer = makePeer(uid); peer.pc.addTransceiver('audio', { direction:'sendrecv' }); peer.pc.addTransceiver('video', { direction:'sendrecv' }); attachLocal(peer.pc); }
+  const offer = await peer.pc.createOffer(restart ? { iceRestart:true } : undefined);
+  await peer.pc.setLocalDescription(offer);
+  sigSend(uid, { type:'offer', data: JSON.stringify(peer.pc.localDescription) });
+}
+async function onSignal(m){
+  if (!CALL.on || !m.from || m.from === FB.uid) return;
+  const uid = m.from; let peer = CALL.peers[uid];
+  try {
+    if (m.type === 'offer') {
+      if (!peer) peer = makePeer(uid);
+      await peer.pc.setRemoteDescription(JSON.parse(m.data));
+      attachLocal(peer.pc);
+      const ans = await peer.pc.createAnswer(); await peer.pc.setLocalDescription(ans);
+      sigSend(uid, { type:'answer', data: JSON.stringify(peer.pc.localDescription) });
+      flushIce(peer);
+    } else if (m.type === 'answer' && peer) { await peer.pc.setRemoteDescription(JSON.parse(m.data)); flushIce(peer); }
+    else if (m.type === 'ice') { const c = JSON.parse(m.data); if (!peer || !peer.pc.remoteDescription) { if (!peer) peer = makePeer(uid); peer.queue.push(c); } else await peer.pc.addIceCandidate(c).catch(() => {}); }
+  } catch (e) { console.warn('signal', e); }
+}
+function flushIce(peer){ const q = peer.queue.splice(0); q.forEach(c => peer.pc.addIceCandidate(c).catch(() => {})); }
+function closePeer(uid){ const p = CALL.peers[uid]; if (!p) return; try { p.pc.close(); } catch {} delete CALL.peers[uid]; const t = document.getElementById('tile-' + uid); if (t) t.remove(); }
+function callSync(){
+  if (CALL.on && FB) {
+    Object.keys(CALL.list).forEach(uid => { if (uid !== FB.uid && !CALL.peers[uid] && FB.uid < uid) offerTo(uid).catch(e => console.warn(e)); });
+    Object.keys(CALL.peers).forEach(uid => { if (!CALL.list[uid]) closePeer(uid); });
+  }
+  updateMembers(); renderCall();
+}
+async function toggleCam(){
+  if (!CALL.on) return;
+  if (CALL.vtrack) { CALL.vtrack.stop(); CALL.local.removeTrack(CALL.vtrack); CALL.vtrack = null; CALL.video = false; }
+  else { try { const s = await navigator.mediaDevices.getUserMedia({ video: VID }); CALL.vtrack = s.getVideoTracks()[0]; CALL.local.addTrack(CALL.vtrack); CALL.video = true; } catch (e) { toast(mediaErr(e)); return; } }
+  Object.values(CALL.peers).forEach(p => p.pc.getTransceivers().forEach(t => { if (t.receiver.track && t.receiver.track.kind === 'video') t.sender.replaceTrack(CALL.vtrack || null); }));
+  FB.db.ref(`rooms/${RM.code}/call/${FB.uid}`).update({ video: CALL.video }).catch(() => {});
+  renderCall();
+}
+function toggleMic(){
+  if (!CALL.on) return; const a = CALL.local.getAudioTracks()[0]; if (!a) return;
+  a.enabled = !a.enabled; CALL.mic = a.enabled;
+  FB.db.ref(`rooms/${RM.code}/call/${FB.uid}`).update({ mic: CALL.mic }).catch(() => {});
+  renderCall();
+}
+/* tiles keep their <video> elements alive across re-renders */
+const tileEls = {};
+function tileFor(uid){
+  if (tileEls[uid]) return tileEls[uid];
+  const d = document.createElement('div'); d.className = 'tile'; d.id = 'tile-' + uid;
+  d.innerHTML = `<video playsinline autoplay ${uid === 'me' ? 'muted' : ''}></video><div class="ph"></div><div class="lbl"></div><div class="st"></div>`;
+  tileEls[uid] = d; return d;
+}
+function paintTile(uid){
+  const self = uid === 'me', info = self ? { name: myName() + ' (আপনি)', video: CALL.video, mic: CALL.mic } : (CALL.list[uid] || {});
+  const d = tileFor(uid), v = d.querySelector('video');
+  const stream = self ? CALL.local : (CALL.peers[uid] && CALL.peers[uid].stream);
+  if (stream && v.srcObject !== stream) v.srcObject = stream;
+  if (v.srcObject && v.paused) { const p = v.play(); if (p) p.catch(() => {}); }
+  const showVid = !!info.video && !!stream && stream.getVideoTracks().length > 0;
+  d.classList.toggle('vid', showVid); d.classList.toggle('self', self);
+  d.querySelector('.ph').innerHTML = avatar(info.name, self ? (FB && FB.uid) : uid, true);
+  d.querySelector('.lbl').innerHTML = `${info.mic === false ? IC.micOff : ''}<span>${esc(info.name || '')}</span>`;
+  const st = self ? '' : (CALL.peers[uid] ? ({ connected:'', connecting:'সংযোগ হচ্ছে…', new:'সংযোগ হচ্ছে…', disconnected:'সংযোগ দুর্বল…', failed:'সংযোগ হয়নি' })[CALL.peers[uid].state] ?? '' : 'সংযোগ হচ্ছে…');
+  d.querySelector('.st').textContent = st || '';
+}
+function renderCall(){
+  const box = $('#callArea'); if (box) box.innerHTML = callAreaHTML();
+  const grid = $('#callGrid');
+  if (grid && CALL.on) {
+    const ids = ['me'].concat(Object.keys(CALL.list).filter(u => FB && u !== FB.uid));
+    ids.forEach(u => { const t = tileFor(u); paintTile(u); grid.appendChild(t); });
+    Object.keys(tileEls).forEach(u => { if (!ids.includes(u)) { delete tileEls[u]; } });
+    grid.dataset.n = String(ids.length);
+  }
+  const mini = $('#callMini'); if (mini) mini.innerHTML = callMiniHTML();
+  const tabN = $('#callTabN'); if (tabN) { const n = Object.keys(CALL.list).length; tabN.textContent = n ? bn(n) : ''; tabN.hidden = !n; }
+}
+function callAreaHTML(){
+  const people = Object.entries(CALL.list);
+  if (!CALL.on) return `<div class="tpanel center">
+      <div class="callpeople">${people.length ? people.map(([u, p]) => `<div class="cp">${avatar(p.name, u, true)}<small>${esc(p.name)}</small></div>`).join('') : '<div style="font-size:44px">📞</div>'}</div>
+      <h2 class="h2" style="margin-top:8px">${people.length ? `${bn(people.length)} জন এখন কলে আছে` : 'এখনো কেউ কলে নেই'}</h2>
+      <p class="small muted" style="margin-top:4px">${people.length ? 'এক চাপেই যোগ দিন, কোনো লগইন লাগবে না।' : 'আপনি শুরু করুন, বাকিরা এক চাপে যোগ দেবে।'}</p></div>
+    <div class="two"><button class="btn tbtn big" data-act="callAudio" ${CALL.starting ? 'disabled' : ''}>${IC.mic} অডিও কল</button><button class="btn big" data-act="callVideo" ${CALL.starting ? 'disabled' : ''}>${IC.cam} ভিডিও কল</button></div>
+    <p class="small muted center">${CALL.starting ? 'মাইক্রোফোনের অনুমতি দিন…' : 'প্রথমবার ফোন মাইক্রোফোন/ক্যামেরার অনুমতি চাইবে, Allow দিন।'}</p>`;
+  return `<div class="callgrid" id="callGrid"></div>
+    <div class="callbar">
+      <button class="cbtn ${CALL.mic ? '' : 'off'}" data-act="callMic" aria-label="${CALL.mic ? 'মিউট করুন' : 'আনমিউট করুন'}">${CALL.mic ? IC.mic : IC.micOff}<small>${CALL.mic ? 'মিউট' : 'আনমিউট'}</small></button>
+      <button class="cbtn ${CALL.video ? '' : 'off'}" data-act="callCam" aria-label="ক্যামেরা">${CALL.video ? IC.cam : IC.camOff}<small>ক্যামেরা</small></button>
+      <button class="cbtn" data-act="rmInvite" aria-label="আমন্ত্রণ">${ICON.share}<small>ডাকুন</small></button>
+      <button class="cbtn hang" data-act="callLeave" aria-label="কল ছাড়ুন">${IC.hang}<small>ছাড়ুন</small></button></div>`;
+}
+const callMiniHTML = () => CALL.on && RM.tab !== 'call' ? `<button class="callmini" data-act="rmTab" data-k="call"><span class="live-dot"></span>কলে আছেন · ${bn(Object.keys(CALL.list).length)} জন<span class="grow"></span><span>${CALL.mic ? '🎙️' : '🔇'} খুলুন →</span></button>` : '';
+
+/* ----- live battle ----- */
 function boardHTML(){
   const b = RM.battle, info = b && b.info;
   if (!info) return `<div class="tpanel center"><div style="font-size:44px">⚔️</div><h2 class="h2" style="margin-top:6px">লাইভ চ্যালেঞ্জ</h2><p class="small muted" style="margin-top:6px">একজন শুরু করলে গ্রুপের সবাই একই ১০টা প্রশ্ন পাবে। কে কতটা পারছে, সবাই লাইভ দেখবে।</p></div>
-    <button class="btn tbtn big" data-act="rbNew">নতুন চ্যালেঞ্জ শুরু করুন</button>`;
+    <button class="btn tbtn big" data-act="rbNew">চ্যালেঞ্জ শুরু করুন</button>`;
   const players = Object.entries((b.players) || {}).filter(([, p]) => p && p.round === info.round).sort((x, y) => (y[1].score - x[1].score) || (y[1].i - x[1].i));
   const allDone = players.length > 0 && players.every(([, p]) => p.done);
   const top = players.length ? players[0][1].score : 0;
   const mine = FB && b.players && b.players[FB.uid] && b.players[FB.uid].round === info.round ? b.players[FB.uid] : null;
   const playing = RM.play && RM.play.round === info.round && !RM.play.done;
-  return `<div class="tpanel"><div class="row between nowrap"><div><div class="eyebrow">চ্যালেঞ্জ চলছে</div><b>${esc(info.by || '')} শুরু করেছে</b></div>${allDone ? '<span class="tag">শেষ</span>' : '<span class="done-badge" style="background:var(--tb);color:var(--ta)">● লাইভ</span>'}</div></div>
-    <div class="board">${players.length ? players.map(([uid, p], i) => `<div class="brow ${allDone && p.score === top ? 'win' : ''}">${avatar(p.name, uid)}<div style="min-width:0"><b>${esc(p.name)}${FB && uid === FB.uid ? ' (আপনি)' : ''}</b>${allDone && p.score === top ? ' 🏆' : ''}<div class="small muted">${p.done ? 'শেষ করেছে' : `প্রশ্ন ${bn(Math.min(10, (p.i || 0) + 1))}/১০`}</div><div class="bar"><i style="width:${(p.i || 0) * 10}%"></i></div></div><b class="sc">${bn(p.score || 0)}</b></div>`).join('') : '<p class="small muted center">এখনো কেউ খেলা শুরু করেনি</p>'}</div>
+  return `<div class="tpanel"><div class="row between nowrap"><div><div class="eyebrow">চ্যালেঞ্জ</div><b>${esc(info.by || '')} শুরু করেছে</b></div>${allDone ? '<span class="tag">শেষ</span>' : '<span class="done-badge" style="background:var(--tb);color:var(--ta)">● লাইভ</span>'}</div></div>
+    <div class="board">${players.length ? players.map(([uid, p]) => `<div class="brow ${allDone && p.score === top ? 'win' : ''}">${avatar(p.name, uid)}<div style="min-width:0"><b>${esc(p.name)}${FB && uid === FB.uid ? ' (আপনি)' : ''}</b>${allDone && p.score === top ? ' 🏆' : ''}<div class="small muted">${p.done ? 'শেষ করেছে' : `প্রশ্ন ${bn(Math.min(10, (p.i || 0) + 1))}/১০`}</div><div class="bar"><i style="width:${(p.i || 0) * 10}%"></i></div></div><b class="sc">${bn(p.score || 0)}</b></div>`).join('') : '<p class="small muted center">এখনো কেউ খেলা শুরু করেনি</p>'}</div>
     ${playing ? '' : mine && mine.done ? `<button class="btn big" data-act="rbNew">আরেকটা নতুন চ্যালেঞ্জ</button>` : `<button class="btn tbtn big" data-act="rbJoin">${mine ? 'চালিয়ে যান' : 'চ্যালেঞ্জে যোগ দিন'}</button>`}`;
 }
 function updateBoard(){ const el = $('#rmBoard'); if (el) el.innerHTML = boardHTML(); }
 function playHTML(){ const pl = RM.play; if (!pl || pl.done) return ''; const q = pl.qs[pl.i];
   return `${stepsBar(pl.i, 10)}<div class="row between nowrap"><div class="eyebrow" style="color:var(--ta)">প্রশ্ন ${bn(pl.i + 1)}/১০</div><span class="small muted">স্কোর ${bn(pl.score)}</span></div>${qBlock(q, pl.answered, 'rb')}`; }
 function pushMine(){ const pl = RM.play; if (!pl || !FB) return;
-  FB.db.ref(`rooms/${RM.code}/battle/players/${FB.uid}`).set({ name: P.name, round: pl.round, score: pl.score, i: pl.i, done: !!pl.done }).catch(e => toast(fbErr(e))); }
+  FB.db.ref(`rooms/${RM.code}/battle/players/${FB.uid}`).set({ name: myName(), round: pl.round, score: pl.score, i: pl.i, done: !!pl.done }).catch(e => toast(fbErr(e))); }
 
-/* views */
+/* ----- views ----- */
+const steps3 = `<div class="how3">
+  <div><span>১</span><b>গ্রুপ খুলুন</b><small>এক চাপে</small></div>
+  <div><span>২</span><b>কোড পাঠান</b><small>বন্ধুদের কাছে</small></div>
+  <div><span>৩</span><b>কথা বলুন</b><small>অডিও বা ভিডিওতে</small></div></div>`;
 V.room = () => {
-  if (RM.phase === 'loading') return `<section class="view t-room"><div class="tpanel center" style="padding:40px 20px"><div class="mic-wrap"><div class="wave on">${'<i></i>'.repeat(5)}</div></div><p>সংযোগ হচ্ছে…</p></div></section>`;
-  if (RM.phase === 'error') return `<section class="view t-room">${backBtn('#room', 'গ্রুপ রুম')}<div class="tpanel center"><div style="font-size:40px">😕</div><p style="margin-top:6px">${esc(RM.err)}</p></div><button class="btn tbtn big" data-act="rmRetry">আবার চেষ্টা করুন</button></section>`;
-  if (RM.phase === 'name') return `<section class="view t-room"><div class="room-hero"><div class="eyebrow" style="color:#A8F0DA">গ্রুপে যোগ দিন</div><h1 class="h1" style="margin-top:4px">${esc(RM.meta.name)}</h1><p class="small" style="margin-top:6px">গ্রুপের সবাই আপনার নাম দেখবে।</p></div>
-    <label class="small muted" for="rmName">আপনার নাম</label><input class="search" id="rmName" maxlength="24" placeholder="যেমন: Rahim" value="${esc(P.name || '')}">
-    <button class="btn tbtn big" data-act="rmJoinName">যোগ দিন</button></section>`;
+  if (RM.phase === 'loading') return `<section class="view t-room"><div class="tpanel center" style="padding:40px 20px"><div class="mic-wrap"><div class="wave on">${'<i></i>'.repeat(5)}</div></div><p>গ্রুপে ঢোকা হচ্ছে…</p></div></section>`;
+  if (RM.phase === 'error') return `<section class="view t-room">${backBtn('#room', 'গ্রুপ রুম')}<div class="tpanel center"><div style="font-size:40px">😕</div><p style="margin-top:6px">${esc(RM.err)}</p></div><button class="btn tbtn big" data-act="rmRetry">আবার চেষ্টা করুন</button><a class="btn big" href="#room">অন্য কোড দিন</a></section>`;
+  if (RM.phase === 'name') return `<section class="view t-room"><div class="room-hero"><div class="eyebrow" style="color:#A8F0DA">আপনাকে ডাকা হয়েছে</div><h1 class="h1" style="margin-top:4px">${esc(RM.meta.name)}</h1><p class="small" style="margin-top:6px">শুধু আপনার নামটা লিখে যোগ দিন।</p></div>
+    <label class="small muted" for="rmName">আপনার নাম</label><input class="search big-in" id="rmName" maxlength="24" placeholder="যেমন: Rahim" value="${esc(P.name || '')}" autocomplete="off">
+    <button class="btn tbtn big" data-act="rmJoinName">যোগ দিন ✓</button></section>`;
   if (RM.phase === 'room') {
-    const n = Object.keys(RM.members || {}).length;
-    const tabs = `<div class="rtabs" role="group" aria-label="রুম">${[['chat','💬 চ্যাট'],['battle','⚔️ চ্যালেঞ্জ'],['voice','🎙️ ভয়েস']].map(([k, v]) => `<button data-act="rmTab" data-k="${k}" aria-pressed="${RM.tab === k}">${v}</button>`).join('')}</div>`;
+    const n = Object.keys(RM.members || {}).length, alone = n <= 1;
+    const tabs = `<div class="rtabs" role="group" aria-label="রুম">
+      <button data-act="rmTab" data-k="call" aria-pressed="${RM.tab === 'call'}">📞 কল <span class="badge-n" id="callTabN" hidden></span></button>
+      <button data-act="rmTab" data-k="chat" aria-pressed="${RM.tab === 'chat'}">💬 চ্যাট <span class="badge-n" id="unread" ${unread && RM.tab !== 'chat' ? '' : 'hidden'}>${bn(unread)}</span></button>
+      <button data-act="rmTab" data-k="battle" aria-pressed="${RM.tab === 'battle'}">⚔️ চ্যালেঞ্জ</button></div>`;
     let body = '';
+    if (RM.tab === 'call') body = `<div id="callArea">${callAreaHTML()}</div>`;
     if (RM.tab === 'chat') body = `<div class="chatbox" id="chatBox" aria-live="polite">${RM.msgs.length ? RM.msgs.map(msgHTML).join('') : '<div class="sys empty">প্রথম মেসেজটা আপনিই দিন! ইংরেজিতে লেখার চেষ্টা করুন 🙂</div>'}</div>
       <div class="quick">${QUICK.map(q => `<button data-act="rmQuick" data-t="${esc(q)}">${esc(q)}</button>`).join('')}</div>
       <div class="composer"><textarea id="rmInput" maxlength="500" rows="1" placeholder="ইংরেজিতে লিখুন…" aria-label="মেসেজ">${esc(RM.draft)}</textarea><button class="send" data-act="rmSend" aria-label="পাঠান">${SEND}</button></div>`;
     if (RM.tab === 'battle') body = RM.play && !RM.play.done && RM.battle && RM.battle.info && RM.play.round === RM.battle.info.round ? `${playHTML()}<div class="eyebrow" style="margin-top:6px">লাইভ স্কোর</div><div id="rmBoard">${boardHTML()}</div>` : `<div id="rmBoard">${boardHTML()}</div>`;
-    if (RM.tab === 'voice') body = `<div class="tpanel center"><div style="font-size:48px">🎙️</div><h2 class="h2" style="margin-top:6px">গ্রুপ ভয়েস রুম</h2>
-      <p class="small muted" style="margin-top:6px">এই গ্রুপের সবাই নিচের বাটনে চাপলে একই ভয়েস রুমে ঢুকবেন। একসাথে ইংরেজিতে কথা বলুন!</p></div>
-      <a class="btn tbtn big" href="${voiceLink(RM.code)}" target="_blank" rel="noopener" data-act="rmVoice">ভয়েস রুমে যোগ দিন</a>
-      <div class="rules"><b style="color:var(--ink)">যেভাবে কাজ করে</b><ul style="margin:6px 0 0;padding-left:18px">
-        <li>ভয়েস রুম চলে ফ্রি Jitsi Meet এ, নতুন ট্যাবে খুলবে।</li>
-        <li>প্রথমবার মাইক্রোফোনের অনুমতি দিন। যে প্রথমে ঢুকবে, তাকে হয়তো একবার Google দিয়ে লগইন করতে বলবে।</li>
-        <li>ফোনে Jitsi Meet অ্যাপ থাকলে সেখানেই খুলবে, আরও ভালো চলবে।</li>
-        <li>কথা শেষে এই ট্যাবে ফিরে এসে চ্যাট আর চ্যালেঞ্জ চালিয়ে যান।</li></ul></div>`;
     return `<section class="view t-room">
-      <div class="row between nowrap">${backBtn('#room', 'সব গ্রুপ')}<button class="btn sm" data-act="rmInvite">${ICON.share} আমন্ত্রণ</button></div>
-      <div class="tpanel" style="padding:14px 16px"><div class="row between nowrap"><div style="min-width:0"><h1 class="h2" style="font-size:20px">${esc(RM.meta.name)}</h1><div class="small muted">অনলাইনে <b id="rmCount">${bn(n)}</b> জন</div></div><span class="codechip">${esc(RM.code)}</span></div>
+      <div class="row between nowrap">${backBtn('#room', 'গ্রুপ রুম')}<button class="btn sm" data-act="rmInvite">${ICON.share} বন্ধুদের ডাকুন</button></div>
+      <div class="tpanel" style="padding:14px 16px"><div class="row between nowrap"><div style="min-width:0"><h1 class="h2" style="font-size:20px">${esc(RM.meta.name)}</h1><div class="small muted">অনলাইনে <b id="rmCount">${bn(n)}</b> জন</div></div><button class="codechip" data-act="shCopy" aria-label="কোড কপি করুন">${esc(RM.code)} ⧉</button></div>
         <div class="members" id="rmMembers" style="margin-top:10px">${membersHTML()}</div></div>
+      ${alone || RM.fresh ? sharePanel(RM.code) : ''}
+      <div id="callMini">${callMiniHTML()}</div>
       ${tabs}${body}</section>`;
   }
   const saved = P.rooms || [];
-  return `<section class="view t-room">${backBtn('#practice', 'অনুশীলন স্টুডিও')}
-    <div class="room-hero"><div class="eyebrow" style="color:#A8F0DA">গ্রুপ রুম</div><h1 class="h1" style="margin-top:4px">বন্ধুদের সাথে একসাথে ইংরেজি প্র্যাকটিস</h1>
-      <p class="small" style="margin-top:8px">দেশ-বিদেশ যেখানেই থাকুন, একটা গ্রুপ খুলে কোড শেয়ার করুন। চ্যাট, লাইভ চ্যালেঞ্জ আর ভয়েসে কথা বলা, সব এক জায়গায়।</p></div>
-    ${saved.length ? `<div><div class="eyebrow" style="margin-bottom:8px">আপনার গ্রুপ</div><div class="saved-rooms">${saved.map(r => `<a href="#room/${esc(r.code)}"><span>${esc(r.name)}</span><span class="codechip">${esc(r.code)}</span></a>`).join('')}</div></div>` : ''}
-    <div class="tpanel"><h2 class="h2">কোড দিয়ে যোগ দিন</h2><div class="row nowrap" style="margin-top:10px"><input class="input grow" id="rmCode" maxlength="6" placeholder="যেমন: K7M2QX" autocomplete="off"><button class="btn tbtn" data-act="rmJoin">যোগ দিন</button></div></div>
-    <div class="tpanel"><h2 class="h2">নতুন গ্রুপ খুলুন</h2>
-      <label class="small muted" for="rmName" style="display:block;margin-top:10px">আপনার নাম</label><input class="search" id="rmName" maxlength="24" placeholder="যেমন: Julfikar" value="${esc(P.name || '')}">
-      <label class="small muted" for="rmTitle" style="display:block;margin-top:10px">গ্রুপের নাম</label><input class="search" id="rmTitle" maxlength="40" placeholder="যেমন: Freelancer English Club">
-      <button class="btn tbtn big" style="margin-top:12px" data-act="rmCreate">গ্রুপ খুলুন</button></div>
+  return `<section class="view t-room">
+    <div class="room-hero"><div class="eyebrow" style="color:#A8F0DA">গ্রুপ রুম</div><h1 class="h1" style="margin-top:4px">বন্ধুদের সাথে লাইভ ইংরেজিতে কথা বলুন</h1>
+      <p class="small" style="margin-top:8px">অডিও কল, ভিডিও কল, চ্যাট আর চ্যালেঞ্জ। কোনো লগইন বা অ্যাকাউন্ট লাগবে না।</p></div>
+    ${steps3}
+    <div class="tpanel"><label class="h2" for="rmName" style="display:block">আপনার নাম</label>
+      <input class="search big-in" id="rmName" maxlength="24" placeholder="যেমন: Rahim" value="${esc(P.name || '')}" autocomplete="off" style="margin-top:8px"></div>
+    <div class="tpanel"><h2 class="h2">🔑 কোড দিয়ে যোগ দিন</h2><p class="small muted">বন্ধু যে কোড পাঠিয়েছে সেটা এখানে দিন</p>
+      <div class="codein"><input id="rmCode" maxlength="40" placeholder="ABC123" autocomplete="off" autocapitalize="characters" spellcheck="false" inputmode="text"><button class="pastebtn" data-act="rmPaste">${IC.paste}<span>পেস্ট</span></button></div>
+      <button class="btn tbtn big" style="margin-top:10px" data-act="rmJoin">যোগ দিন</button></div>
+    <div class="or"><span>অথবা</span></div>
+    <button class="btn big createbtn" data-act="rmCreate">➕ নতুন গ্রুপ খুলুন</button>
+    ${saved.length ? `<div><div class="eyebrow" style="margin-bottom:8px">আগের গ্রুপগুলো</div><div class="saved-rooms">${saved.map(r => `<a href="#room/${esc(r.code)}"><span>${esc(r.name)}</span><span class="codechip">${esc(r.code)}</span></a>`).join('')}</div></div>` : ''}
     <div class="rules"><b style="color:var(--ink)">নিরাপদ থাকুন</b><ul style="margin:6px 0 0;padding-left:18px">
-      <li>গ্রুপগুলো প্রাইভেট। কোড জানলেই শুধু ঢোকা যায়, তাই শুধু পরিচিতদের সাথে কোড শেয়ার করুন।</li>
-      <li>ফোন নাম্বার, ঠিকানা, পাসওয়ার্ড বা টাকার তথ্য চ্যাটে দেবেন না।</li>
-      <li>গ্রুপ রুম ১৩ বছরের বেশি বয়সীদের জন্য।</li></ul></div>
+      <li>গ্রুপ প্রাইভেট। কোড জানলেই শুধু ঢোকা যায়, তাই শুধু পরিচিতদের কোড দিন।</li>
+      <li>ফোন নাম্বার, ঠিকানা, পাসওয়ার্ড বা টাকার তথ্য শেয়ার করবেন না।</li>
+      <li>গ্রুপ রুম ১৩ বছরের বেশি বয়সীদের জন্য। ছোটদের অভিভাবকের সাথে ব্যবহার করতে দিন।</li></ul></div>
     ${credit()}</section>`;
 };
 
@@ -1145,30 +1350,44 @@ document.addEventListener('click', e => {
   const el = e.target.closest('[data-act]'); if (!el) return;
   const a = el.dataset.act;
   if (a === 'rmCreate') { roomCreate(); return; }
-  if (a === 'rmJoin') { const c = cleanCode($('#rmCode')?.value); if (c.length !== 6) { toast('৬ অক্ষরের কোডটা লিখুন'); return; } location.hash = '#room/' + c; return; }
-  if (a === 'rmJoinName') { const nm = ($('#rmName')?.value || '').trim(); if (!nm) { toast('আপনার নাম লিখুন'); return; } P.name = nm.slice(0, 24); save(); RM.phase = 'room'; roomListen(); return; }
+  if (a === 'rmJoin') { joinFromInput(); return; }
+  if (a === 'rmPaste') { (navigator.clipboard && navigator.clipboard.readText ? navigator.clipboard.readText() : Promise.reject()).then(t => { const c = cleanCode(t); const inp = $('#rmCode'); if (inp) inp.value = c || t.trim(); if (c.length === 6) joinFromInput(); else toast('কপি করা লেখায় কোনো কোড পাওয়া যায়নি'); })
+      .catch(() => { const inp = $('#rmCode'); if (inp) inp.focus(); toast('বক্সে চেপে ধরে Paste চাপুন'); }); return; }
+  if (a === 'rmJoinName') { const nm = ($('#rmName')?.value || '').trim(); if (nm) { P.name = nm.slice(0, 24); save(); } myName(); RM.phase = 'room'; roomListen(); return; }
   if (a === 'rmRetry') { if (RM.code) roomEnter(RM.code); else { RM.phase = 'lobby'; render(); } return; }
-  if (a === 'rmTab') { RM.draft = ($('#rmInput') || {}).value ?? RM.draft; RM.tab = el.dataset.k; render(); if (RM.tab === 'chat') { const b = $('#chatBox'); if (b) b.scrollTop = b.scrollHeight; } return; }
+  if (a === 'rmTab') { RM.draft = ($('#rmInput') || {}).value ?? RM.draft; RM.tab = el.dataset.k; RM.fresh = false; if (RM.tab === 'chat') unread = 0; render(); if (RM.tab === 'call') renderCall(); if (RM.tab === 'chat') { const b = $('#chatBox'); if (b) b.scrollTop = b.scrollHeight; } return; }
   if (a === 'rmSend') { const inp = $('#rmInput'); const t = inp ? inp.value : ''; if (!t.trim()) return; sendMsg(t); if (inp) { inp.value = ''; inp.focus(); } RM.draft = ''; return; }
   if (a === 'rmQuick') { sendMsg(el.dataset.t); return; }
-  if (a === 'rmInvite') { const link = roomLink(RM.code); const text = `English Gym এ আমার গ্রুপে যোগ দাও! চলো একসাথে ইংরেজি প্র্যাকটিস করি।\nগ্রুপ কোড: ${RM.code}`;
-    if (navigator.share) navigator.share({ title:'English Gym গ্রুপ', text, url:link }).catch(() => {}); else copy(text + '\n' + link); return; }
-  if (a === 'rmVoice') { sendMsg(`🎙️ ${P.name} ভয়েস রুমে যোগ দিয়েছে`); return; }
-  if (a === 'rbNew') { if (!FB) return; const info = { seed: Math.floor(Math.random()*9e8) + 1e8, round: Date.now(), by: P.name };
-    FB.db.ref(`rooms/${RM.code}/battle/info`).set(info).then(() => { sendMsg(`⚔️ ${P.name} নতুন চ্যালেঞ্জ শুরু করেছে! চ্যালেঞ্জ ট্যাবে যোগ দিন।`); }).catch(e => toast(fbErr(e)));
+  if (a === 'rmInvite') { openShareModal(); return; }
+  if (a === 'shCopy') { copy(RM.code); return; }
+  if (a === 'shMessenger') { const link = roomLink(RM.code);
+    if (isMobile()) { copy(inviteText(RM.code)); location.href = `fb-messenger://share/?link=${encodeURIComponent(link)}`; }
+    else { copy(inviteText(RM.code)); window.open('https://www.messenger.com/', '_blank', 'noopener'); toast('আমন্ত্রণ কপি হয়েছে, Messenger এ পেস্ট করুন'); } return; }
+  if (a === 'shMore') { const text = inviteText(RM.code); if (navigator.share) navigator.share({ title:'English Gym গ্রুপ', text }).catch(() => {}); else copy(text); return; }
+  if (a === 'callAudio') { callJoin(false); return; }
+  if (a === 'callVideo') { callJoin(true); return; }
+  if (a === 'callMic') { toggleMic(); return; }
+  if (a === 'callCam') { toggleCam(); return; }
+  if (a === 'callLeave') { callLeave(); sendMsg(`👋 ${myName()} কল ছেড়েছে`); renderCall(); updateMembers(); return; }
+  if (a === 'rbNew') { if (!FB) return; const info = { seed: Math.floor(Math.random()*9e8) + 1e8, round: Date.now(), by: myName() };
+    FB.db.ref(`rooms/${RM.code}/battle/info`).set(info).then(() => { sendMsg(`⚔️ ${myName()} নতুন চ্যালেঞ্জ শুরু করেছে! চ্যালেঞ্জ ট্যাবে যোগ দিন।`); }).catch(e => toast(fbErr(e)));
     RM.play = { round: info.round, qs: chQuestions(info.seed), i:0, score:0, answered:null, done:false }; RM.battle = { ...(RM.battle || {}), info }; pushMine(); render(); return; }
   if (a === 'rbJoin') { const info = RM.battle && RM.battle.info; if (!info) return; const mine = RM.battle.players && RM.battle.players[FB.uid];
     const resume = mine && mine.round === info.round ? mine : null;
     RM.play = { round: info.round, qs: chQuestions(info.seed), i: resume ? Math.min(resume.i, 9) : 0, score: resume ? resume.score : 0, answered:null, done:false }; pushMine(); render(); return; }
   if (a === 'rb') { const pl = RM.play; if (!pl || pl.answered !== null) return; const i = +el.dataset.i; pl.answered = i; if (pl.qs[pl.i].opts[i].ok) { pl.score++; addXP(5); } render(); return; }
-  if (a === 'rbNext') { const pl = RM.play; pl.i++; pl.answered = null; if (pl.i >= 10) { pl.done = true; pl.i = 10; sendMsg(`🏁 ${P.name} চ্যালেঞ্জ শেষ করেছে: ${bn(pl.score)}/১০`); confetti(); } pushMine(); render(); return; }
+  if (a === 'rbNext') { const pl = RM.play; pl.i++; pl.answered = null; if (pl.i >= 10) { pl.done = true; pl.i = 10; sendMsg(`🏁 ${myName()} চ্যালেঞ্জ শেষ করেছে: ${bn(pl.score)}/১০`); confetti(); } pushMine(); render(); return; }
 });
 document.addEventListener('keydown', e => {
   if (e.target.id === 'rmInput' && e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); $('[data-act="rmSend"]')?.click(); }
-  if (e.target.id === 'rmCode' && e.key === 'Enter') { e.preventDefault(); $('[data-act="rmJoin"]')?.click(); }
+  if (e.target.id === 'rmCode' && e.key === 'Enter') { e.preventDefault(); joinFromInput(); }
+  if (e.target.id === 'rmName' && e.key === 'Enter' && RM.phase === 'name') { e.preventDefault(); $('[data-act="rmJoinName"]')?.click(); }
 });
-document.addEventListener('input', e => { if (e.target.id === 'rmInput') RM.draft = e.target.value; });
-window.addEventListener('pagehide', () => { if (FB && RM.code && RM.phase === 'room') { try { FB.db.ref(`rooms/${RM.code}/members/${FB.uid}`).remove(); } catch {} } });
+document.addEventListener('input', e => {
+  if (e.target.id === 'rmInput') RM.draft = e.target.value;
+  if (e.target.id === 'rmCode') { const v = e.target.value; const c = cleanCode(v); if (/#room\//.test(v) || (c.length === 6 && v.trim().length <= 8)) { e.target.value = c; if (c.length === 6 && e.inputType === 'insertFromPaste') joinFromInput(); } }
+});
+window.addEventListener('pagehide', () => { if (FB && RM.code && RM.phase === 'room') { try { FB.db.ref(`rooms/${RM.code}/members/${FB.uid}`).remove(); FB.db.ref(`rooms/${RM.code}/call/${FB.uid}`).remove(); } catch {} } });
 
 /* ================= ROUTER ================= */
 const NAVMAP = { workout:'home', words:'learn', daily:'learn', phrases:'learn', freelance:'learn', quiz:'practice', room:'practice', speak:'practice', sounds:'practice', build:'practice', dictation:'practice', ch:'practice' };
@@ -1180,6 +1399,7 @@ function render(){
   if (cur === 'words' && Wd.tab === 'all') renderWList();
   if (cur === 'daily') renderDList();
   if (cur === 'freelance') renderFList();
+  if (cur === 'room' && RM.phase === 'room' && RM.tab === 'call') renderCall();
 }
 function go(){
   stopTimer();
