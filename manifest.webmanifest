@@ -1,0 +1,16 @@
+{
+  "name": "English Gym by Julfikar",
+  "short_name": "English Gym",
+  "description": "প্রতিদিন ১০ মিনিটে ইংরেজি — কমন ভুল, শব্দ, গল্প আর ফ্রেজ। ফ্রি।",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#F4F6FA",
+  "theme_color": "#0B1730",
+  "lang": "bn",
+  "icons": [
+    {"src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png"},
+    {"src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png"},
+    {"src": "icons/icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+  ]
+}
