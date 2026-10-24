@@ -14,7 +14,7 @@
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&family=Baloo+Da+2:wght@500;700;800&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&family=Baloo+Da+2:wght@500;700;800&family=Playfair+Display:ital,wght@0,700;1,600&display=swap">
 <style>
 /* Layout: phone-first app shell — navy top bar, slate workspace, fixed bottom tab bar; desktop centers a 720px column. Kids Corner switches to a bright playful skin. */
 :root{
@@ -27,7 +27,7 @@
   --f-display:'Plus Jakarta Sans','Hind Siliguri',system-ui,sans-serif;
   --f-body:'Hind Siliguri',system-ui,-apple-system,'Segoe UI',sans-serif;
   --f-kids:'Baloo Da 2','Hind Siliguri',system-ui,sans-serif;
-  --r:16px; --shadow:0 1px 2px rgba(15,26,46,.05),0 8px 24px rgba(15,26,46,.06);
+  --r:16px; --shadow:0 1px 2px rgba(15,26,46,.05),0 8px 24px rgba(15,26,46,.06); --chart:#9FB3D9;
   color-scheme:light;
 }
 @media (prefers-color-scheme: dark){:root{
@@ -35,7 +35,7 @@
   --accent:#34C88E; --accent-ink:#04231A; --accent-soft:#0F3026;
   --fire:#FF9A3D; --gold:#E9B44C; --gold-soft:#33280F;
   --bad:#FF7A6B; --bad-soft:#3A1A17; --good:#34C88E; --good-soft:#0F3026;
-  --nav:#060B16; --nav-2:#0F1A33; --kbg:#1B1830; --kink:#F4F1FF;
+  --nav:#060B16; --nav-2:#0F1A33; --kbg:#1B1830; --kink:#F4F1FF; --chart:#3B4E78;
   --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.28); color-scheme:dark}}
 *{box-sizing:border-box}
 html,body{margin:0}
@@ -425,6 +425,30 @@ textarea{width:100%;border:1px solid var(--line);border-radius:12px;padding:12px
 .callmini{display:flex;align-items:center;gap:8px;width:100%;border:0;border-radius:14px;background:#0F3B46;color:#fff;padding:10px 14px;font-weight:700;font-size:14px}
 .nextbtn{position:sticky;bottom:calc(84px + env(safe-area-inset-bottom,0px));z-index:6;box-shadow:0 8px 24px -6px rgba(15,26,46,.35)}
 .blank{display:inline-block;min-width:70px;border-bottom:3px solid var(--accent);color:transparent}
+.kpis{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.kpi{padding:14px 16px;display:flex;flex-direction:column;gap:2px}
+.kpi span{font-size:13px;color:var(--muted);font-weight:600}
+.kpi b{font-family:var(--f-display);font-size:32px;font-weight:800;line-height:1.1;font-variant-numeric:tabular-nums}
+.kpi small{font-size:12px;color:var(--muted)}
+.up{color:var(--good);font-weight:700}.down{color:var(--bad);font-weight:700}
+.chart{width:100%;height:auto;display:block}
+.chart .ax{stroke:var(--line);stroke-width:1}
+.chart .cl{fill:var(--muted);font-size:16px;font-family:var(--f-body)}
+.chart .cv{fill:var(--ink);font-size:16px;font-weight:700;font-family:var(--f-body)}
+.certbanner{display:flex;gap:12px;align-items:center;text-decoration:none;color:#fff;border-radius:18px;padding:14px 16px;background:linear-gradient(135deg,#0B1730,#2A2350 60%,#6B4E1F);border:1px solid #B8913A}
+.certbanner .emo{font-size:32px}
+.certbanner b{display:block;font-size:17px}
+.certbanner small{display:block;color:#E2D3AE;font-size:13px}
+.certs{display:flex;flex-direction:column;gap:10px}
+.certcard{display:flex;gap:12px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:12px 14px}
+.certcard.got{border-color:#B8913A;background:linear-gradient(135deg,var(--surface),var(--gold-soft))}
+.certcard .ci{font-size:30px;width:46px;text-align:center;flex:none}
+.certcard b{display:block}
+.certcard small{display:block;color:var(--muted);font-size:13px}
+.certcard .bar{margin:6px 0 2px}
+.certcard:not(.got) .ci{filter:grayscale(1);opacity:.6}
+.lockic{font-size:18px;opacity:.6}
+.certimg{width:100%;border-radius:10px;border:1px solid var(--line);box-shadow:var(--shadow)}
 .kindgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 .kindgrid button{border:2px solid var(--tb,var(--line));background:var(--surface);border-radius:14px;padding:10px;display:flex;flex-direction:column;align-items:flex-start;gap:1px;text-align:left;color:var(--ink);min-height:84px}
 .kindgrid .e{font-size:22px;line-height:1.2}

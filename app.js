@@ -53,6 +53,7 @@ const BADGES = [
   { id:'kids', n:'কিডস স্টার', d:'বাচ্চাদের গেমে ২০ স্টার', ok:() => P.stars >= 20, ic:'M12 3l2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1L3.2 9.5l6.1-.9z' }
 ];
 function checkBadges(){
+  try { checkCerts(); } catch {}
   const fresh = BADGES.filter(b => !P.badges.includes(b.id) && b.ok());
   fresh.forEach(b => P.badges.push(b.id));
   if (fresh.length) { save(); setTimeout(() => toast('নতুন ব্যাজ পেয়েছেন: ' + fresh.map(b => b.n).join(', ')), 600); }
@@ -187,6 +188,7 @@ V.home = () => {
     <div class="bar"><i style="width:${L.pct}%"></i></div>
   </div>
 
+  ${P.newCert && CERTS.find(c => c.id === P.newCert) ? `<a class="certbanner pop" href="#certs"><span class="emo">🎓</span><span class="grow"><b>অভিনন্দন! নতুন সার্টিফিকেট</b><small>${esc(CERTS.find(c => c.id === P.newCert).b)} · নিজের নামে বানিয়ে শেয়ার করুন</small></span><span>→</span></a>` : ''}
   <a class="roomcard" href="#room"><span class="rc-ic">📞</span><span class="grow"><b>গ্রুপ রুম</b><small>এই গ্রুপ রুমে ঢুকে গ্রুপ তৈরি করে আপনার বন্ধুদের সাথে লাইভ কথা বলুন</small></span><span class="rc-go">→</span></a>
 
   <div class="card">
@@ -297,7 +299,7 @@ function finishWorkout(){
     if (!P.days.includes(t)) P.days.push(t);
     if (!P.firstDay) P.firstDay = t;
     P.bestStreak = Math.max(P.bestStreak, P.streak);
-    W.xp += 30; P.xp += 30;
+    W.xp += 30; P.xp += 30; track('workout');
   }
   save(); updateTop(); checkBadges(); W.step = 4; confetti();
 }
@@ -321,7 +323,7 @@ function startQuiz(){
   if (Q.kind === 'speed') { Q.left = 60; timerId = setInterval(() => { Q.left--; const t = $('#timer'); if (t) t.textContent = bn(Q.left) + 's'; if (Q.left <= 0) endQuiz(); }, 1000); }
 }
 function endQuiz(){
-  stopTimer(); Q.mode = 'result';
+  stopTimer(); Q.mode = 'result'; track('quiz');
   if (Q.kind === 'speed') P.speedBest = Math.max(P.speedBest, Q.score); else P.quizBest = Math.max(P.quizBest, Q.score);
   save(); checkBadges(); if (Q.kind !== 'speed' && Q.score >= 8) confetti(); render(); window.scrollTo(0,0);
 }
@@ -611,6 +613,7 @@ V.progress = () => {
       <p class="small muted" style="margin:4px 0 12px">${P.firstDay ? 'প্রতিদিন workout শেষ করলে ঘর সবুজ হবে। কমলা দাগ = আজ।' : 'প্রথম workout শেষ করলেই আপনার ৩০ দিনের চ্যালেঞ্জ শুরু হবে।'}</p>
       <div class="grid30">${grid}</div>
       <button class="btn primary big" style="margin-top:14px" data-act="shareStreak">${ICON.share} চ্যালেঞ্জের আপডেট শেয়ার করুন</button></div>
+    <a class="certbanner" href="#certs"><span class="emo">🎓</span><span class="grow"><b>আমার সার্টিফিকেট</b><small>${bn(CERTS.filter(c => P.certs && P.certs[c.id]).length)}/${bn(CERTS.length)}টা অর্জিত · নিজের নামে বানিয়ে শেয়ার করুন</small></span><span>→</span></a>
     <div><div class="eyebrow" style="margin-bottom:8px">ব্যাজ · ${bn(P.badges.length)}/${bn(BADGES.length)}</div>
       <div class="badges">${BADGES.map(b => `<div class="badge ${P.badges.includes(b.id) ? 'got' : ''}"><span class="ic">${svgI(b.ic)}</span><span><b>${b.n}</b><small>${b.d}</small></span></div>`).join('')}</div></div>
     <p class="small muted">আপনার সব প্রোগ্রেস শুধু এই ফোন/ব্রাউজারে সেভ থাকে। কোনো অ্যাকাউন্ট লাগে না, কেউ আপনার তথ্য দেখতে পায় না।</p>
@@ -912,7 +915,7 @@ function speedBox(q, answered, act){
 let CH = { seed:0, from:null, mode:'intro', qs:[], i:0, answered:null, score:0, level: P.chLevel || 'easy', kind: P.chKind || 'fill', left:SPEED_SECS };
 let chTimer = null;
 const chStop = () => { if (chTimer) { clearInterval(chTimer); chTimer = null; } };
-function chFinish(){ chStop(); CH.mode = 'result'; if (!CH.from || CH.score >= CH.from.score) confetti(); render(); window.scrollTo(0, 0); }
+function chFinish(){ chStop(); CH.mode = 'result'; track('challenge'); if (!CH.from || CH.score >= CH.from.score) confetti(); render(); window.scrollTo(0, 0); }
 function chLink(){ return `${SITE}#ch/${CH.seed}/${CH.score}/${encodeURIComponent((P.name || 'বন্ধু').slice(0, 24))}/${CH.level}/${CH.kind}`; }
 const lvlSeg = (act, cur) => `<div class="lvlseg" role="group" aria-label="লেভেল">${LEVELS3.map(([k, n, e]) => `<button data-act="${act}" data-k="${k}" aria-pressed="${cur === k}"><span>${e}</span>${n}<small>${bn((CHB[k] || []).length)}টা প্রশ্ন</small></button>`).join('')}</div>`;
 function chOpen(parts){
@@ -1007,7 +1010,7 @@ document.addEventListener('click', e => {
     render(); window.scrollTo(0, 0); return; }
   if (a === 'cha') { const i = +el.dataset.i, q = CH.qs[CH.i]; CH.answered = i; if (q.opts[i].ok) { CH.score++; addXP(5); } render(); return; }
   if (a === 'chaNext') { CH.i++; CH.answered = null; if (CH.i >= CH.qs.length) { chFinish(); return; } render(); window.scrollTo(0, 0); return; }
-  if (a === 'chshare') { const link = chLink(); const text = `⚔️ English Gym চ্যালেঞ্জ (${kindLabel(CH.kind, CH.level)})! আমার স্কোর ${scoreTxt(CH.score, CH.kind)}। একই প্রশ্নে তুমি কয়টা পারবে?`;
+  if (a === 'chshare') { track('share'); const link = chLink(); const text = `⚔️ English Gym চ্যালেঞ্জ (${kindLabel(CH.kind, CH.level)})! আমার স্কোর ${scoreTxt(CH.score, CH.kind)}। একই প্রশ্নে তুমি কয়টা পারবে?`;
     if (navigator.share) navigator.share({ title:'English Gym চ্যালেঞ্জ', text, url:link }).catch(() => {}); else copy(text + '\n' + link); return; }
   if (a === 'chcopy') { copy(chLink()); return; }
 });
@@ -1080,7 +1083,7 @@ async function roomCreate(){
     const fb = await fbInit();
     for (let tries = 0; tries < 4; tries++) {
       const code = newCode();
-      try { await fb.db.ref(`rooms/${code}/meta`).set({ name: `${name} এর গ্রুপ`.slice(0, 40), owner: fb.uid, created: fb.TS }); rememberRoom(code, `${name} এর গ্রুপ`); RM.fresh = true; location.hash = '#room/' + code; return; }
+      try { await fb.db.ref(`rooms/${code}/meta`).set({ name: `${name} এর গ্রুপ`.slice(0, 40), owner: fb.uid, created: fb.TS }); rememberRoom(code, `${name} এর গ্রুপ`); RM.fresh = true; track('room'); location.hash = '#room/' + code; return; }
       catch (e) { if (!String(e && e.code || e).toLowerCase().includes('permission') || tries === 3) throw e; }
     }
   } catch (e) { RM.phase = 'error'; RM.err = fbErr(e); render(); }
@@ -1187,7 +1190,7 @@ async function callJoin(video){
   } catch (e) { CALL.starting = false; renderCall(); toast(mediaErr(e)); return; }
   CALL.vtrack = CALL.local.getVideoTracks()[0] || null; CALL.video = !!CALL.vtrack; CALL.mic = true;
   await iceServers();
-  CALL.on = true; CALL.starting = false;
+  CALL.on = true; CALL.starting = false; track('call');
   CALL.sigRef = FB.db.ref(`rooms/${RM.code}/sig/${FB.uid}`);
   CALL.sigFn = s => { const m = s.val(); s.ref.remove().catch(() => {}); if (m) onSignal(m); };
   await CALL.sigRef.remove().catch(() => {});
@@ -1448,13 +1451,181 @@ document.addEventListener('input', e => {
   if (e.target.id === 'rmInput') RM.draft = e.target.value;
   if (e.target.id === 'rmCode') { const v = e.target.value; const c = cleanCode(v); if (/#room\//.test(v) || (c.length === 6 && v.trim().length <= 8)) { e.target.value = c; if (c.length === 6 && e.inputType === 'insertFromPaste') joinFromInput(); } }
 });
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-act]'); if (!el) return;
+  const a = el.dataset.act;
+  if (a === 'stReload') { ST.data = null; loadStats(); return; }
+  if (a === 'certOpen') { const c = CERTS.find(x => x.id === el.dataset.k); if (c) certModal(c); return; }
+  if (a === 'certMake') { const c = CERTS.find(x => x.id === el.dataset.k); if (c) certMake(c); return; }
+  if (a === 'certShare') { const c = CERTS.find(x => x.id === el.dataset.k); if (!c || !CERT.blob) return; track('share');
+    const file = new File([CERT.blob], `English-Gym-${c.id}-certificate.png`, { type:'image/png' });
+    if (navigator.canShare && navigator.canShare({ files:[file] })) { navigator.share({ files:[file], text: CERT.caption }).catch(() => {}); }
+    else { copy(CERT.caption); toast('লেখা কপি হয়েছে। ছবি ডাউনলোড করে ফেসবুকে পোস্ট করুন।'); } return; }
+});
+document.addEventListener('keydown', e => { if (e.target.id === 'certName' && e.key === 'Enter') { e.preventDefault(); $('[data-act="certMake"]')?.click(); } });
 document.addEventListener('pointerdown', e => { if (e.target.closest('.composer .send')) e.preventDefault(); });
 document.addEventListener('focusin', e => { if (e.target.matches('input, textarea')) document.body.classList.add('typing'); });
 document.addEventListener('focusout', e => { if (e.target.matches('input, textarea')) setTimeout(() => { const a = document.activeElement; if (!a || !a.matches('input, textarea')) document.body.classList.remove('typing'); }, 80); });
 window.addEventListener('pagehide', () => { if (FB && RM.code && RM.phase === 'room') { try { FB.db.ref(`rooms/${RM.code}/members/${FB.uid}`).remove(); FB.db.ref(`rooms/${RM.code}/call/${FB.uid}`).remove(); } catch {} } });
 
+/* ================= ANONYMOUS USAGE COUNTER =================
+   Only counts numbers (opens, users per day, events). No names, no personal data. */
+const STAT_BASE = ((CFG.firebase && CFG.firebase.databaseURL) || '').replace(/\/$/, '');
+const INC = { '.sv': { increment: 1 } };
+function statSend(body){
+  if (!STAT_BASE || (navigator.onLine === false)) return;
+  try { fetch(`${STAT_BASE}/stats.json`, { method:'PATCH', body: JSON.stringify(body), keepalive:true }).catch(() => {}); } catch {}
+}
+function statOpen(){
+  const d = today(), b = {}; b[`d/${d}/opens`] = INC;
+  if (!P.did) { P.did = Math.random().toString(36).slice(2, 10); b['total/devices'] = INC; b[`d/${d}/new`] = INC; }
+  if (P.statDay !== d) { P.statDay = d; b[`d/${d}/users`] = INC; }
+  save(); statSend(b);
+}
+const track = ev => statSend({ [`d/${today()}/e/${ev}`]: INC });
+const EVENTS = [['workout','ওয়ার্কআউট শেষ'],['quiz','কুইজ খেলা'],['challenge','বন্ধুকে চ্যালেঞ্জ'],['share','শেয়ার'],['room','গ্রুপ খোলা'],['call','কলে যোগ'],['cert','সার্টিফিকেট']];
+let ST = { loading:false, data:null, err:'' };
+async function loadStats(){
+  if (!STAT_BASE) { ST.err = 'Firebase সেট আপ হয়নি'; render(); return; }
+  ST.loading = true; ST.err = ''; render();
+  try { const r = await fetch(`${STAT_BASE}/stats.json`); if (!r.ok) throw new Error(r.status); ST.data = (await r.json()) || {}; }
+  catch (e) { ST.err = 'ডেটা আনা যায়নি। Firebase Rules এ "stats" অংশ আছে কিনা দেখুন।'; }
+  ST.loading = false; render();
+}
+V.stats = () => {
+  if (!ST.data && !ST.loading && !ST.err) { setTimeout(loadStats, 0); }
+  const head = `<div class="row between nowrap"><div><div class="eyebrow">শুধু আপনার জন্য</div><h1 class="h1">ইউজার ড্যাশবোর্ড</h1></div><button class="btn sm" data-act="stReload">↻ রিফ্রেশ</button></div>`;
+  if (ST.loading && !ST.data) return `<section class="view">${head}<div class="card center muted">লোড হচ্ছে…</div></section>`;
+  if (ST.err) return `<section class="view">${head}<div class="card center"><p>${esc(ST.err)}</p></div></section>`;
+  const days = (ST.data && ST.data.d) || {}, total = (ST.data && ST.data.total) || {};
+  const list = []; for (let i = 13; i >= 0; i--) { const d = new Date(); d.setDate(d.getDate() - i); const k = isoOf(d); list.push([k, days[k] || {}]); }
+  const t = days[today()] || {}, y = list[list.length - 2][1] || {};
+  const sum = (key, n) => list.slice(-n).reduce((a, [, v]) => a + (v[key] || 0), 0);
+  const max = Math.max(1, ...list.map(([, v]) => v.users || 0));
+  const W = 640, H = 220, pad = 30, bw = (W - pad*2) / list.length;
+  const bars = list.map(([k, v], i) => { const h = Math.round(((v.users || 0) / max) * (H - 70)); const x = pad + i*bw + 4, yy = H - 34 - h;
+    return `<rect x="${x}" y="${yy}" width="${bw - 8}" height="${Math.max(h, 2)}" rx="5" fill="${k === today() ? 'var(--accent)' : 'var(--chart)'}"/>${v.users ? `<text x="${x + (bw - 8)/2}" y="${yy - 6}" text-anchor="middle" class="cv">${bn(v.users)}</text>` : ''}<text x="${x + (bw - 8)/2}" y="${H - 14}" text-anchor="middle" class="cl">${bn(+k.slice(8))}</text>`; }).join('');
+  const delta = (a, b) => b ? (a >= b ? `<span class="up">▲ ${bn(a - b)}</span>` : `<span class="down">▼ ${bn(b - a)}</span>`) : '';
+  return `<section class="view">${head}
+    <div class="kpis">
+      <div class="card kpi"><span>আজকের ইউজার</span><b>${bn(t.users || 0)}</b><small>গতকাল ${bn(y.users || 0)} ${delta(t.users || 0, y.users || 0)}</small></div>
+      <div class="card kpi"><span>আজ নতুন ইউজার</span><b>${bn(t.new || 0)}</b><small>৭ দিনে ${bn(sum('new', 7))}</small></div>
+      <div class="card kpi"><span>আজ কতবার খোলা</span><b>${bn(t.opens || 0)}</b><small>৭ দিনে ${bn(sum('opens', 7))}</small></div>
+      <div class="card kpi"><span>মোট ডিভাইস</span><b>${bn(total.devices || 0)}</b><small>শুরু থেকে এখন পর্যন্ত</small></div>
+    </div>
+    <div class="card"><div class="row between nowrap"><h2 class="h2">প্রতিদিনের ইউজার</h2><span class="small muted">শেষ ১৪ দিন</span></div>
+      <div style="overflow-x:auto;margin-top:8px"><svg viewBox="0 0 ${W} ${H}" class="chart" role="img" aria-label="শেষ ১৪ দিনের ইউজার সংখ্যা"><line x1="${pad}" y1="${H - 34}" x2="${W - pad}" y2="${H - 34}" class="ax"/>${bars}</svg></div>
+      <p class="small muted">সবুজ = আজ। একই ফোন দিনে একবারই গোনা হয়।</p></div>
+    <div class="card"><h2 class="h2">কোন ফিচার কতবার ব্যবহার হয়েছে</h2>
+      <div style="overflow-x:auto;margin-top:8px"><table class="cmp"><thead><tr><th>ফিচার</th><th>আজ</th><th>৭ দিন</th></tr></thead><tbody>
+      ${EVENTS.map(([k, n]) => { const td = (t.e && t.e[k]) || 0, w = list.slice(-7).reduce((a, [, v]) => a + ((v.e && v.e[k]) || 0), 0); return `<tr><td>${n}</td><td>${bn(td)}</td><td>${bn(w)}</td></tr>`; }).join('')}
+      </tbody></table></div></div>
+    <p class="small muted">এই পেজে শুধু মোট সংখ্যা আছে, কারো নাম বা ব্যক্তিগত তথ্য না। লিংক: ${esc(SITE)}#stats</p>
+  </section>`;
+};
+
+/* ================= CERTIFICATES ================= */
+const CERTS = [
+  { id:'start', t:'First Step', b:'প্রথম ধাপ', ic:'🌱', line:'for completing the first workout on English Gym', need:'প্রথম workout শেষ করুন', prog:() => [Math.min(P.days.length, 1), 1] },
+  { id:'d7', t:'7-Day English Challenge', b:'৭ দিনের চ্যালেঞ্জ', ic:'🔥', line:'for practising English for 7 days on English Gym', need:'৭ দিন workout শেষ করুন', prog:() => [Math.min(P.days.length, 7), 7] },
+  { id:'d30', t:'30-Day English Challenge', b:'৩০ দিনের চ্যালেঞ্জ', ic:'🏆', line:'for successfully completing the 30-Day English Challenge', need:'৩০ দিন workout শেষ করুন', prog:() => [Math.min(P.days.length, 30), 30] },
+  { id:'hunter', t:'Mistakes Hunter Master', b:'মিসটেকস হান্টার মাস্টার', ic:'🔍', line:`for practising all ${D.MISTAKES.length} common English mistakes`, need:`সব ${bn(D.MISTAKES.length)}টা ভুল অনুশীলন করুন`, prog:() => P.badges.includes('allseen') ? [1, 1] : [seenCount(), D.MISTAKES.length] },
+  { id:'lv1', t:'Level: Survivor', b:'লেভেল: Survivor', ic:'🥉', line:'for reaching the Survivor level in English practice', need:'৩০০ XP অর্জন করুন', prog:() => [Math.min(P.xp, 300), 300] },
+  { id:'lv2', t:'Level: Speaker', b:'লেভেল: Speaker', ic:'🥈', line:'for reaching the Speaker level in English practice', need:'৯০০ XP অর্জন করুন', prog:() => [Math.min(P.xp, 900), 900] },
+  { id:'lv3', t:'Level: Fluent', b:'লেভেল: Fluent', ic:'🥇', line:'for reaching the Fluent level in English practice', need:'২০০০ XP অর্জন করুন', prog:() => [Math.min(P.xp, 2000), 2000] },
+  { id:'boss', t:'English Boss', b:'ইংলিশ বস', ic:'👑', line:'for reaching the highest level, English Boss, on English Gym', need:'৪০০০ XP অর্জন করুন', prog:() => [Math.min(P.xp, 4000), 4000] }
+];
+const certDone = c => { const [a, b] = c.prog(); return a >= b; };
+function checkCerts(){
+  P.certs = P.certs || {}; let fresh = [];
+  CERTS.forEach(c => { if (!P.certs[c.id] && certDone(c)) { P.certs[c.id] = today(); fresh.push(c); } });
+  if (fresh.length) { P.newCert = fresh[fresh.length - 1].id; save(); setTimeout(() => toast(`🎓 নতুন সার্টিফিকেট: ${fresh.map(c => c.b).join(', ')}`), 1200); }
+}
+const certId = c => { let h = 0; const s = (P.did || 'x') + c.id + (P.certs && P.certs[c.id]); for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0; return `EG-${c.id.toUpperCase().slice(0, 3)}-${h.toString(36).toUpperCase().slice(0, 6)}`; };
+const MONTHS_EN = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+const enDate = iso => { const [y, m, d] = String(iso || today()).split('-').map(Number); return `${d} ${MONTHS_EN[m - 1]} ${y}`; };
+async function drawCert(c, name){
+  const fonts = ['700 80px "Playfair Display"', 'italic 600 80px "Playfair Display"', '700 30px "Plus Jakarta Sans"', '500 30px "Hind Siliguri"'];
+  try { await Promise.all(fonts.map(f => document.fonts.load(f))); } catch {}
+  const W = 1600, H = 1130, cv = document.createElement('canvas'); cv.width = W; cv.height = H; const x = cv.getContext('2d');
+  const NAVY = '#0B1730', GOLD = '#B8913A', GOLD2 = '#E2C27A', INK = '#1C2740', SOFT = '#5A6478';
+  const SERIF = '"Playfair Display", "Hind Siliguri", Georgia, serif', SANS = '"Plus Jakarta Sans", "Hind Siliguri", Arial, sans-serif';
+  x.fillStyle = '#FFFFFF'; x.fillRect(0, 0, W, H);
+  const g = x.createRadialGradient(W/2, H/2, 100, W/2, H/2, 900); g.addColorStop(0, '#FFFFFF'); g.addColorStop(1, '#F3F5FA'); x.fillStyle = g; x.fillRect(0, 0, W, H);
+  x.fillStyle = NAVY; x.fillRect(0, 0, W, 26); x.fillRect(0, H - 26, W, 26); x.fillRect(0, 0, 26, H); x.fillRect(W - 26, 0, 26, H);
+  x.strokeStyle = GOLD; x.lineWidth = 3; x.strokeRect(52, 52, W - 104, H - 104); x.lineWidth = 1; x.strokeRect(64, 64, W - 128, H - 128);
+  [[64,64],[W-64,64],[64,H-64],[W-64,H-64]].forEach(([cx, cy]) => { x.save(); x.translate(cx, cy); x.rotate(Math.PI/4); x.fillStyle = GOLD; x.fillRect(-11, -11, 22, 22); x.fillStyle = '#FFFFFF'; x.fillRect(-5, -5, 10, 10); x.restore(); });
+  x.fillStyle = '#0E8F62'; roundRect(x, W/2 - 36, 104, 72, 72, 18); x.fill();
+  x.fillStyle = '#FFFFFF'; x.font = `800 28px ${SANS}`; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('EG', W/2, 141);
+  x.textBaseline = 'alphabetic'; x.fillStyle = NAVY; x.font = `700 22px ${SANS}`;
+  if ('letterSpacing' in x) x.letterSpacing = '8px'; x.fillText('ENGLISH GYM', W/2, 216); if ('letterSpacing' in x) x.letterSpacing = '0px';
+  x.font = `700 92px ${SERIF}`; x.fillStyle = NAVY; x.fillText('Certificate', W/2, 330);
+  x.font = `700 24px ${SANS}`; x.fillStyle = GOLD; if ('letterSpacing' in x) x.letterSpacing = '10px'; x.fillText('OF ACHIEVEMENT', W/2, 378); if ('letterSpacing' in x) x.letterSpacing = '0px';
+  x.font = `500 28px ${SANS}`; x.fillStyle = SOFT; x.fillText('This certificate is proudly presented to', W/2, 460);
+  let size = 96; x.font = `italic 600 ${size}px ${SERIF}`; while (x.measureText(name).width > W - 360 && size > 48) { size -= 4; x.font = `italic 600 ${size}px ${SERIF}`; }
+  x.fillStyle = INK; x.fillText(name, W/2, 575);
+  const nw = Math.min(W - 360, Math.max(420, x.measureText(name).width + 80)); x.strokeStyle = GOLD; x.lineWidth = 2; x.beginPath(); x.moveTo(W/2 - nw/2, 605); x.lineTo(W/2 + nw/2, 605); x.stroke();
+  x.font = `500 30px ${SANS}`; x.fillStyle = SOFT; x.fillText(c.line, W/2, 672);
+  x.font = `700 44px ${SERIF}`; x.fillStyle = NAVY; x.fillText(c.t, W/2, 742);
+  const by = 930;
+  x.strokeStyle = '#C5CCD8'; x.lineWidth = 2;
+  x.beginPath(); x.moveTo(230, by); x.lineTo(560, by); x.stroke(); x.beginPath(); x.moveTo(W - 560, by); x.lineTo(W - 230, by); x.stroke();
+  x.font = `600 30px ${SANS}`; x.fillStyle = INK; x.fillText(enDate(P.certs && P.certs[c.id]), 395, by - 18);
+  x.font = `italic 600 46px ${SERIF}`; x.fillText(CFG.owner || 'Julfikar', W - 395, by - 16);
+  x.font = `600 20px ${SANS}`; x.fillStyle = SOFT; if ('letterSpacing' in x) x.letterSpacing = '4px'; x.fillText('DATE', 395, by + 34); x.fillText('FOUNDER, ENGLISH GYM', W - 395, by + 34); if ('letterSpacing' in x) x.letterSpacing = '0px';
+  const sx = W/2, sy = 905;
+  x.fillStyle = GOLD2; x.beginPath(); for (let i = 0; i < 48; i++) { const a = i / 48 * Math.PI * 2, r = i % 2 ? 84 : 92; x.lineTo(sx + Math.cos(a) * r, sy + Math.sin(a) * r); } x.closePath(); x.fill();
+  x.fillStyle = GOLD; x.beginPath(); x.arc(sx, sy, 74, 0, Math.PI*2); x.fill();
+  x.strokeStyle = '#FFF4D6'; x.lineWidth = 2; x.beginPath(); x.arc(sx, sy, 64, 0, Math.PI*2); x.stroke();
+  x.fillStyle = '#FFFFFF'; x.font = `800 34px ${SANS}`; x.textBaseline = 'middle'; x.fillText('EG', sx, sy - 10);
+  x.font = `700 13px ${SANS}`; if ('letterSpacing' in x) x.letterSpacing = '3px'; x.fillText('CERTIFIED', sx, sy + 24); if ('letterSpacing' in x) x.letterSpacing = '0px';
+  x.textBaseline = 'alphabetic'; x.font = `500 18px ${SANS}`; x.fillStyle = SOFT; x.fillText(`Certificate ID: ${certId(c)}  ·  ${location.host || 'English Gym'}${location.pathname.replace(/index\.html$/, '')}`, W/2, H - 92);
+  return new Promise(r => cv.toBlob(r, 'image/png'));
+}
+let CERT = { open:null, url:null, blob:null, busy:false };
+V.certs = () => {
+  checkCerts();
+  const got = CERTS.filter(c => P.certs && P.certs[c.id]).length;
+  return `<section class="view">${backBtn('#progress', 'প্রোগ্রেস')}
+    <div class="card hero"><div class="eyebrow" style="color:#E2C27A">সার্টিফিকেট</div><h1 class="h1" style="margin-top:2px">আপনার অর্জন, আপনার নামে</h1>
+      <p class="small muted" style="margin-top:6px">লক্ষ্য পূরণ করলেই সার্টিফিকেট খুলবে। নিজের নাম দিয়ে বানিয়ে ফেসবুকে শেয়ার করুন। পেয়েছেন ${bn(got)}/${bn(CERTS.length)}টা।</p></div>
+    <div class="certs">${CERTS.map(c => { const [a, b] = c.prog(), done = P.certs && P.certs[c.id], pct = Math.round(Math.min(1, a / b) * 100);
+      return `<div class="certcard ${done ? 'got' : ''}"><span class="ci">${c.ic}</span><div class="grow"><b>${esc(c.b)}</b><small>${done ? `অর্জন: ${esc(enDate(done))}` : esc(c.need)}</small>
+        ${done ? '' : `<div class="bar light"><i style="width:${pct}%"></i></div><small>${bn(Math.min(a, b))}/${bn(b)}</small>`}</div>
+        ${done ? `<button class="btn sm gold" data-act="certOpen" data-k="${c.id}">বানান</button>` : '<span class="lockic">🔒</span>'}</div>`; }).join('')}</div>
+    <p class="small muted">সার্টিফিকেট আপনার এই ফোনের প্রোগ্রেস দেখে তৈরি হয়। নিয়মিত অনুশীলন করে সবগুলো অর্জন করুন!</p>
+    ${credit()}</section>`;
+};
+function certModal(c){
+  const nm = P.certName || (P.name && !/^Guest /.test(P.name) ? P.name : '');
+  $('#modalHost').innerHTML = `<div class="modal-bg" data-act="closeModal"><div class="modal" role="dialog" aria-label="সার্টিফিকেট">
+    <div class="row between nowrap"><b>${c.ic} ${esc(c.b)}</b><button class="btn ghost sm" data-act="closeModal">বন্ধ</button></div>
+    <label class="small muted" for="certName">সার্টিফিকেটে যে নাম থাকবে (ইংরেজিতে লিখলে সবচেয়ে সুন্দর দেখায়)</label>
+    <input class="search" id="certName" maxlength="32" placeholder="যেমন: Md. Rahim Uddin" value="${esc(nm)}" autocomplete="off">
+    <button class="btn gold big" data-act="certMake" data-k="${c.id}">🎓 সার্টিফিকেট তৈরি করুন</button>
+    <div id="certOut"></div></div></div>`;
+  setTimeout(() => $('#certName')?.focus(), 50);
+}
+async function certMake(c){
+  const name = ($('#certName')?.value || '').trim().replace(/\s+/g, ' ');
+  if (name.length < 2) { toast('আপনার নামটা লিখুন'); $('#certName')?.focus(); return; }
+  P.certName = name; save();
+  const out = $('#certOut'); if (out) out.innerHTML = '<p class="small muted center">তৈরি হচ্ছে…</p>';
+  const blob = await drawCert(c, name); if (!blob) { toast('তৈরি করা যায়নি'); return; }
+  if (CERT.url) URL.revokeObjectURL(CERT.url);
+  CERT = { open:c.id, url: URL.createObjectURL(blob), blob, busy:false };
+  track('cert'); P.newCert = null; save();
+  const caption = `🎓 আলহামদুলিল্লাহ! আমি English Gym এ "${c.t}" সার্টিফিকেট অর্জন করেছি।\n\nপ্রতিদিন ১০ মিনিট ইংরেজি প্র্যাকটিস, একদম ফ্রি। তুমিও শুরু করো:\n${SITE}`;
+  if (out) out.innerHTML = `<img src="${CERT.url}" alt="${esc(name)} এর সার্টিফিকেট" class="certimg">
+    <button class="btn primary big" data-act="certShare" data-k="${c.id}">${ICON.share} ফেসবুকে শেয়ার করুন</button>
+    <a class="btn big" href="${CERT.url}" download="English-Gym-${c.id}-certificate.png">ছবি ডাউনলোড করুন</a>
+    <button class="btn big" data-act="copy" data-t="${esc(caption)}">পোস্টের লেখা কপি করুন</button>
+    <p class="small muted">ফেসবুকে ছবিটা আপলোড করে লেখাটা পেস্ট করুন। iPhone এ ছবিতে চেপে ধরে Save করুন।</p>`;
+  CERT.caption = caption;
+}
+
 /* ================= ROUTER ================= */
-const NAVMAP = { workout:'home', words:'learn', daily:'learn', phrases:'learn', freelance:'learn', quiz:'practice', room:'practice', speak:'practice', sounds:'practice', build:'practice', dictation:'practice', ch:'practice' };
+const NAVMAP = { workout:'home', words:'learn', daily:'learn', phrases:'learn', freelance:'learn', quiz:'practice', room:'practice', certs:'progress', speak:'practice', sounds:'practice', build:'practice', dictation:'practice', ch:'practice' };
 function render(){
   app.innerHTML = (V[cur] || V.home)();
   const navKey = NAVMAP[cur] || cur;
@@ -1468,7 +1639,7 @@ function render(){
   if (ex && app.querySelector('.nextbtn')) requestAnimationFrame(() => { const r = ex.getBoundingClientRect(); const over = r.bottom + 170 - innerHeight; if (over > 0) window.scrollBy({ top: over, behavior: 'smooth' }); });
 }
 function go(){
-  stopTimer(); chStop();
+  stopTimer(); chStop(); $('#modalHost').innerHTML = '';
   const h = (location.hash || '#home').slice(1); const parts = h.split('/'); const [n, a] = parts;
   cur = V[n] ? n : 'home'; arg = a || '';
   if (cur === 'ch') chOpen(parts);
@@ -1572,9 +1743,9 @@ document.addEventListener('click', e => {
   /* sharing */
   if (a === 'shareMistake') { const m = todaysMistake(); share({ kind:'mistake', eyebrow:'আজকের কমন ভুল', wrong:m[0], right:m[1], note:m[2], cta:'আরও ২০০+ ভুল ধরুন, ফ্রি' }, `আজকের কমন ভুল:\n✗ ${m[0]}\n✓ ${m[1]}\n${m[2]}`); return; }
   if (a === 'shareQuiz') { const sp = Q.kind === 'speed'; share({ eyebrow: sp ? 'স্পিড রাউন্ড · ৬০ সেকেন্ড' : 'Mistakes Hunter স্কোর', big: sp ? bn(Q.score) : `${bn(Q.score)}/১০`, line1:'বাংলাদেশিদের কমন ইংরেজি ভুল ধরার চ্যালেঞ্জ', line2:'তুমি কয়টা পারবে?' }, sp ? `৬০ সেকেন্ডে আমি ${bn(Q.score)}টা ইংরেজি ভুল ধরেছি! তুমি পারবে?` : `আমি English Gym এর Mistakes Hunter এ ১০ এ ${bn(Q.score)} পেয়েছি! তুমি কয়টা পারবে?`); return; }
-  if (a === 'shareStreak') { const s = Math.max(curStreak(), 1); share({ eyebrow:'৩০ দিনের ইংলিশ চ্যালেঞ্জ', big:bn(s), line1:`টানা ${bn(s)} দিন ইংরেজি প্র্যাকটিস!`, line2:`লেভেল: ${levelInfo(P.xp).name} · ${bn(P.xp)} XP` }, `টানা ${bn(s)} দিন ধরে English Gym এ প্রতিদিন ১০ মিনিট ইংরেজি প্র্যাকটিস করছি!`); return; }
-  if (a === 'shareApp') { share({ eyebrow:'ফ্রি ইংলিশ প্র্যাকটিস অ্যাপ', big:'১০ মিনিট', line1:'প্রতিদিন ১০ মিনিটে ইংরেজি', line2:'কমন ভুল · শব্দ · ফ্রিল্যান্সার বাক্য · কিডস গেম' }, 'প্রতিদিন ১০ মিনিটে ইংরেজি শেখার ফ্রি অ্যাপ: English Gym by Julfikar'); return; }
+  if (a === 'shareStreak') { track('share'); const s = Math.max(curStreak(), 1); share({ eyebrow:'৩০ দিনের ইংলিশ চ্যালেঞ্জ', big:bn(s), line1:`টানা ${bn(s)} দিন ইংরেজি প্র্যাকটিস!`, line2:`লেভেল: ${levelInfo(P.xp).name} · ${bn(P.xp)} XP` }, `টানা ${bn(s)} দিন ধরে English Gym এ প্রতিদিন ১০ মিনিট ইংরেজি প্র্যাকটিস করছি!`); return; }
+  if (a === 'shareApp') { track('share'); share({ eyebrow:'ফ্রি ইংলিশ প্র্যাকটিস অ্যাপ', big:'১০ মিনিট', line1:'প্রতিদিন ১০ মিনিটে ইংরেজি', line2:'কমন ভুল · শব্দ · ফ্রিল্যান্সার বাক্য · কিডস গেম' }, 'প্রতিদিন ১০ মিনিটে ইংরেজি শেখার ফ্রি অ্যাপ: English Gym by Julfikar'); return; }
 });
 
-updateTop(); go();
+updateTop(); statOpen(); go();
 })();
