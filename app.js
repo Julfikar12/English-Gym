@@ -1473,14 +1473,18 @@ window.addEventListener('pagehide', () => { if (FB && RM.code && RM.phase === 'r
 const STAT_BASE = ((CFG.firebase && CFG.firebase.databaseURL) || '').replace(/\/$/, '');
 const INC = { '.sv': { increment: 1 } };
 function statSend(body){
-  if (!STAT_BASE || (navigator.onLine === false)) return;
-  try { fetch(`${STAT_BASE}/stats.json`, { method:'PATCH', body: JSON.stringify(body), keepalive:true }).catch(() => {}); } catch {}
+  if (!STAT_BASE || (navigator.onLine === false)) return Promise.resolve(false);
+  try { return fetch(`${STAT_BASE}/stats.json`, { method:'PATCH', body: JSON.stringify(body), keepalive:true }).then(r => r.ok).catch(() => false); } catch { return Promise.resolve(false); }
 }
+/* a phone is marked "counted" only after the server accepts it, so a failed try is retried next time */
 function statOpen(){
   const d = today(), b = {}; b[`d/${d}/opens`] = INC;
-  if (!P.did) { P.did = Math.random().toString(36).slice(2, 10); b['total/devices'] = INC; b[`d/${d}/new`] = INC; }
-  if (P.statDay !== d) { P.statDay = d; b[`d/${d}/users`] = INC; }
-  save(); statSend(b);
+  if (!P.did) { P.did = Math.random().toString(36).slice(2, 10); save(); }
+  else if (P.statDay && !P.didSent) { P.didSent = 1; save(); }
+  const isNew = !P.didSent, isFirstToday = P.statDay !== d;
+  if (isNew) { b['total/devices'] = INC; b[`d/${d}/new`] = INC; }
+  if (isFirstToday) b[`d/${d}/users`] = INC;
+  statSend(b).then(ok => { if (ok) { if (isNew) P.didSent = 1; if (isFirstToday) P.statDay = d; save(); } });
 }
 const track = ev => statSend({ [`d/${today()}/e/${ev}`]: INC });
 const EVENTS = [['workout','ওয়ার্কআউট শেষ'],['quiz','কুইজ খেলা'],['challenge','বন্ধুকে চ্যালেঞ্জ'],['share','শেয়ার'],['room','গ্রুপ খোলা'],['call','কলে যোগ'],['cert','সার্টিফিকেট']];
