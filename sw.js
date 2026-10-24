@@ -1,5 +1,5 @@
 /* English Gym — offline cache. Bump VERSION when files change. */
-const VERSION = 'eg-v3';
+const VERSION = 'eg-v4';
 const FILES = ['./', 'index.html', 'app.js', 'config.js', 'data.js', 'data-words.js', 'data-daily.js', 'data-freelance-1.js', 'data-freelance-2.js', 'data-kids.js', 'data-practice.js', 'manifest.webmanifest', 'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(VERSION).then(c => c.addAll(FILES)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => { e.waitUntil(caches.keys().then(ks => Promise.all(ks.filter(k => k !== VERSION).map(k => caches.delete(k)))).then(() => self.clients.claim())); });

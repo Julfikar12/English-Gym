@@ -10,6 +10,17 @@ window.EG_CONFIG = {
   whatsapp: "",              // যেমন: "8801XXXXXXXXX" (দেশের কোডসহ, + ছাড়া)
   email: "",                 // যেমন: "you@gmail.com"
 
+  // Group Room (চ্যাট, লাইভ চ্যালেঞ্জ, ভয়েস) — Firebase সেটিংস
+  firebase: {
+    apiKey: "AIzaSyD7qemaxY2wta3nf583_VTj7UmnREQyIkQ",
+    authDomain: "english-gym-b540f.firebaseapp.com",
+    databaseURL: "https://english-gym-b540f-default-rtdb.asia-southeast1.firebasedatabase.app",
+    projectId: "english-gym-b540f",
+    storageBucket: "english-gym-b540f.firebasestorage.app",
+    messagingSenderId: "126224130513",
+    appId: "1:126224130513:web:e293ac4a69968cfdc200f0"
+  },
+
   premium: {
     // false = সবকিছু ফ্রি, প্রিমিয়াম পেজে "শীঘ্রই আসছে" দেখাবে
     // true  = কিছু কনটেন্ট লক হবে, বিকাশ/ব্যাংকে পেমেন্ট নিয়ে কোড দিয়ে আনলক

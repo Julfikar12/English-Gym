@@ -719,6 +719,7 @@ V.practice = () => `<section class="view">
     <a class="tool t-build" href="#build"><span class="ic">${svgI('M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z')}</span><b>বাক্য বানাও</b><small>শব্দ সাজিয়ে বাংলা থেকে ইংরেজি বাক্য</small><span class="new">নতুন</span></a>
     <a class="tool t-dict" href="#dictation"><span class="ic">${svgI('M3 18v-6a9 9 0 0 1 18 0v6M21 19a2 2 0 0 1-2 2h-1v-6h3zM3 19a2 2 0 0 0 2 2h1v-6H3z')}</span><b>শুনো আর লিখো</b><small>ধীরে, স্বাভাবিক বা দ্রুত শুনে লিখুন</small><span class="new">নতুন</span></a>
     <a class="tool t-chal" href="#ch"><span class="ic">${svgI('M14.5 17.5L3 6V3h3l11.5 11.5M13 19l6-6M16 16l4 4M19 21l2-2')}</span><b>বন্ধুকে চ্যালেঞ্জ</b><small>একই ১০টা প্রশ্ন, কে বেশি পায়?</small><span class="new">নতুন</span></a>
+    <a class="tool t-room wide" href="#room"><span class="ic">${svgI('M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M23 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8')}</span><span class="grow"><b>গ্রুপ রুম</b><br><small>বন্ধুদের সাথে গ্রুপ খুলুন: চ্যাট, লাইভ চ্যালেঞ্জ আর ভয়েসে কথা</small></span><span class="new">নতুন</span></a>
     <a class="tool t-hunt wide" href="#quiz"><span class="ic">${svgI('M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM20 20l-4-4M8.5 11l2 2 3.5-3.5')}</span><span class="grow"><b>Mistakes Hunter</b><br><small>${bn(D.MISTAKES.length)}টা কমন ভুল · ক্লাসিক, সত্য/মিথ্যা, স্পিড রাউন্ড</small></span></a>
   </div>${credit()}</section>`;
 
@@ -966,8 +967,211 @@ document.addEventListener('click', e => {
   if (a === 'chcopy') { copy(chLink()); return; }
 });
 
+/* ================= GROUP ROOMS (Firebase, loaded only when opened) ================= */
+const FB_CFG = CFG.firebase || null;
+const FB_VER = '10.12.2';
+let FB = null, fbLoading = null;
+const loadScript = src => new Promise((res, rej) => { const s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = () => rej(new Error('load')); document.head.appendChild(s); });
+function fbInit(){
+  if (FB) return Promise.resolve(FB);
+  if (!fbLoading) fbLoading = (async () => {
+    if (!FB_CFG || !FB_CFG.databaseURL) throw new Error('nocfg');
+    const base = `https://www.gstatic.com/firebasejs/${FB_VER}/`;
+    if (!window.firebase) await loadScript(base + 'firebase-app-compat.js');
+    await Promise.all([loadScript(base + 'firebase-auth-compat.js'), loadScript(base + 'firebase-database-compat.js')]);
+    if (!firebase.apps.length) firebase.initializeApp(FB_CFG);
+    const auth = firebase.auth();
+    let user = await new Promise(r => { const un = auth.onAuthStateChanged(u => { un(); r(u); }); });
+    if (!user) user = (await auth.signInAnonymously()).user;
+    FB = { db: firebase.database(), uid: user.uid, TS: firebase.database.ServerValue.TIMESTAMP };
+    return FB;
+  })().catch(e => { fbLoading = null; throw e; });
+  return fbLoading;
+}
+const CODE_ABC = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+const newCode = () => Array.from({length:6}, () => CODE_ABC[Math.floor(Math.random()*CODE_ABC.length)]).join('');
+const cleanCode = s => String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+const AV_COLORS = ['#127A7A','#D4553A','#6650C8','#2A6FC9','#B9740A','#16875B','#C2255C','#3D5A80'];
+const avColor = uid => AV_COLORS[[...String(uid)].reduce((a, c) => a + c.charCodeAt(0), 0) % AV_COLORS.length];
+const avatar = (name, uid) => `<span class="av" style="background:${avColor(uid)}" aria-hidden="true">${esc((name || '?').trim().charAt(0).toUpperCase() || '?')}</span>`;
+const hhmm = t => { if (!t) return ''; const d = new Date(t); return bn(`${d.getHours() % 12 || 12}:${String(d.getMinutes()).padStart(2,'0')}`) + (d.getHours() < 12 ? ' AM' : ' PM'); };
+const roomLink = code => `${SITE}#room/${code}`;
+const voiceLink = code => `https://meet.jit.si/EnglishGym-${code}-practice-room`;
+const QUICK = ['Hi everyone! 👋', 'How are you today?', 'Can you repeat that, please?', 'What does that word mean?', 'Let\'s practice speaking!', 'Great job! 👏', 'I\'m joining the voice room.', 'See you tomorrow!'];
+const SEND = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 2L11 13M22 2l-7 20-4-9-9-4z"/></svg>';
+
+let RM = { phase:'lobby', code:'', meta:null, msgs:[], members:{}, battle:null, tab:'chat', err:'', play:null, refs:[], lastSend:0, draft:'' };
+function roomLeave(){
+  RM.refs.forEach(([ref, ev, fn]) => { try { ref.off(ev, fn); } catch {} });
+  RM.refs = [];
+  if (FB && RM.code && RM.phase === 'room') { try { FB.db.ref(`rooms/${RM.code}/members/${FB.uid}`).remove(); } catch {} }
+  RM = { ...RM, phase:'lobby', code:'', meta:null, msgs:[], members:{}, battle:null, play:null };
+}
+function rememberRoom(code, name){ P.rooms = [{ code, name }].concat((P.rooms || []).filter(r => r.code !== code)).slice(0, 6); save(); }
+const fbErr = e => { const m = String(e && (e.code || e.message) || e);
+  if (m.includes('nocfg')) return 'গ্রুপ রুম এখনো সেট আপ হয়নি।';
+  if (m.includes('load') || m.includes('network')) return 'ইন্টারনেট সংযোগ দেখে আবার চেষ্টা করুন।';
+  if (m.includes('admin-restricted') || m.includes('operation-not-allowed')) return 'সার্ভারে Anonymous লগইন চালু নেই।';
+  if (m.includes('unauthorized-domain')) return 'এই ওয়েবসাইট এখনো অনুমোদিত না (Authorized domains)।';
+  if (m.toLowerCase().includes('permission')) return 'অনুমতি নেই। রুমের কোডটা আবার দেখুন।';
+  return 'কিছু একটা সমস্যা হয়েছে, একটু পরে আবার চেষ্টা করুন।'; };
+
+async function roomCreate(){
+  const name = ($('#rmName')?.value || '').trim(); const roomName = ($('#rmTitle')?.value || '').trim() || `${name || 'আমার'} এর গ্রুপ`;
+  if (!name) { toast('আগে আপনার নাম লিখুন'); $('#rmName')?.focus(); return; }
+  P.name = name.slice(0, 24); save();
+  RM.phase = 'loading'; render();
+  try {
+    const fb = await fbInit();
+    for (let tries = 0; tries < 4; tries++) {
+      const code = newCode();
+      try { await fb.db.ref(`rooms/${code}/meta`).set({ name: roomName.slice(0, 40), owner: fb.uid, created: fb.TS }); rememberRoom(code, roomName.slice(0, 40)); location.hash = '#room/' + code; return; }
+      catch (e) { if (!String(e && e.code || e).toLowerCase().includes('permission') || tries === 3) throw e; }
+    }
+  } catch (e) { RM.phase = 'error'; RM.err = fbErr(e); render(); }
+}
+async function roomEnter(code){
+  roomLeave(); RM.code = code; RM.phase = 'loading'; RM.tab = 'chat'; render();
+  try {
+    const fb = await fbInit();
+    const snap = await fb.db.ref(`rooms/${code}/meta`).once('value');
+    if (!snap.exists()) { RM.phase = 'error'; RM.err = `"${code}" কোডের কোনো গ্রুপ পাওয়া যায়নি। কোডটা আবার দেখুন।`; render(); return; }
+    if (RM.code !== code) return;
+    RM.meta = snap.val(); RM.phase = P.name ? 'room' : 'name'; rememberRoom(code, RM.meta.name);
+    if (RM.phase === 'room') roomListen(); else render();
+  } catch (e) { RM.phase = 'error'; RM.err = fbErr(e); render(); }
+}
+function roomListen(){
+  const fb = FB, base = fb.db.ref(`rooms/${RM.code}`);
+  const me = base.child(`members/${fb.uid}`);
+  me.set({ name: P.name, t: fb.TS }).then(() => me.onDisconnect().remove()).catch(() => {});
+  const on = (ref, ev, fn) => { ref.on(ev, fn, err => { RM.phase = 'error'; RM.err = fbErr(err); render(); }); RM.refs.push([ref, ev, fn]); };
+  const msgsRef = base.child('messages').limitToLast(80);
+  on(msgsRef, 'child_added', s => { const m = s.val(); if (!m) return; RM.msgs.push({ id: s.key, ...m }); appendMsg(RM.msgs[RM.msgs.length - 1]); });
+  on(base.child('members'), 'value', s => { RM.members = s.val() || {}; updateMembers(); updateBoard(); });
+  on(base.child('battle'), 'value', s => { RM.battle = s.val(); updateBoard(); });
+  render();
+}
+async function sendMsg(text){
+  text = String(text || '').trim().slice(0, 500); if (!text || !FB || RM.phase !== 'room') return;
+  if (Date.now() - RM.lastSend < 1200) { toast('একটু ধীরে লিখুন 🙂'); return; }
+  RM.lastSend = Date.now();
+  try { await FB.db.ref(`rooms/${RM.code}/messages`).push({ uid: FB.uid, name: P.name, text, t: FB.TS }); }
+  catch (e) { toast(fbErr(e)); }
+}
+const msgHTML = m => {
+  if (m.sys) return `<div class="sys">${esc(m.text)}</div>`;
+  const mine = FB && m.uid === FB.uid;
+  return `<div class="msg ${mine ? 'me' : ''}">${mine ? '' : avatar(m.name, m.uid)}<div class="bub"><span class="nm">${esc(m.name)}</span><span class="tx">${esc(m.text)}</span><span class="tm">${hhmm(m.t)}<button data-act="say" data-t="${esc(m.text)}" aria-label="শুনুন">🔊</button></span></div></div>`;
+};
+function appendMsg(m){
+  const box = $('#chatBox'); if (!box) return;
+  const near = box.scrollHeight - box.scrollTop - box.clientHeight < 120;
+  const empty = box.querySelector('.sys.empty'); if (empty) empty.remove();
+  box.insertAdjacentHTML('beforeend', msgHTML(m));
+  if (near || (FB && m.uid === FB.uid)) box.scrollTop = box.scrollHeight;
+}
+function membersHTML(){ const list = Object.entries(RM.members || {});
+  return list.length ? list.map(([uid, m]) => `<span class="member">${avatar(m.name, uid)}${esc(m.name)}${FB && uid === FB.uid ? ' (আপনি)' : ''}<span class="dot" aria-label="অনলাইন"></span></span>`).join('') : '<span class="small muted">কেউ অনলাইনে নেই</span>'; }
+function updateMembers(){ const el = $('#rmMembers'); if (el) el.innerHTML = membersHTML(); const c = $('#rmCount'); if (c) c.textContent = bn(Object.keys(RM.members || {}).length); }
+
+/* live battle */
+function boardHTML(){
+  const b = RM.battle, info = b && b.info;
+  if (!info) return `<div class="tpanel center"><div style="font-size:44px">⚔️</div><h2 class="h2" style="margin-top:6px">লাইভ চ্যালেঞ্জ</h2><p class="small muted" style="margin-top:6px">একজন শুরু করলে গ্রুপের সবাই একই ১০টা প্রশ্ন পাবে। কে কতটা পারছে, সবাই লাইভ দেখবে।</p></div>
+    <button class="btn tbtn big" data-act="rbNew">নতুন চ্যালেঞ্জ শুরু করুন</button>`;
+  const players = Object.entries((b.players) || {}).filter(([, p]) => p && p.round === info.round).sort((x, y) => (y[1].score - x[1].score) || (y[1].i - x[1].i));
+  const allDone = players.length > 0 && players.every(([, p]) => p.done);
+  const top = players.length ? players[0][1].score : 0;
+  const mine = FB && b.players && b.players[FB.uid] && b.players[FB.uid].round === info.round ? b.players[FB.uid] : null;
+  const playing = RM.play && RM.play.round === info.round && !RM.play.done;
+  return `<div class="tpanel"><div class="row between nowrap"><div><div class="eyebrow">চ্যালেঞ্জ চলছে</div><b>${esc(info.by || '')} শুরু করেছে</b></div>${allDone ? '<span class="tag">শেষ</span>' : '<span class="done-badge" style="background:var(--tb);color:var(--ta)">● লাইভ</span>'}</div></div>
+    <div class="board">${players.length ? players.map(([uid, p], i) => `<div class="brow ${allDone && p.score === top ? 'win' : ''}">${avatar(p.name, uid)}<div style="min-width:0"><b>${esc(p.name)}${FB && uid === FB.uid ? ' (আপনি)' : ''}</b>${allDone && p.score === top ? ' 🏆' : ''}<div class="small muted">${p.done ? 'শেষ করেছে' : `প্রশ্ন ${bn(Math.min(10, (p.i || 0) + 1))}/১০`}</div><div class="bar"><i style="width:${(p.i || 0) * 10}%"></i></div></div><b class="sc">${bn(p.score || 0)}</b></div>`).join('') : '<p class="small muted center">এখনো কেউ খেলা শুরু করেনি</p>'}</div>
+    ${playing ? '' : mine && mine.done ? `<button class="btn big" data-act="rbNew">আরেকটা নতুন চ্যালেঞ্জ</button>` : `<button class="btn tbtn big" data-act="rbJoin">${mine ? 'চালিয়ে যান' : 'চ্যালেঞ্জে যোগ দিন'}</button>`}`;
+}
+function updateBoard(){ const el = $('#rmBoard'); if (el) el.innerHTML = boardHTML(); }
+function playHTML(){ const pl = RM.play; if (!pl || pl.done) return ''; const q = pl.qs[pl.i];
+  return `${stepsBar(pl.i, 10)}<div class="row between nowrap"><div class="eyebrow" style="color:var(--ta)">প্রশ্ন ${bn(pl.i + 1)}/১০</div><span class="small muted">স্কোর ${bn(pl.score)}</span></div>${qBlock(q, pl.answered, 'rb')}`; }
+function pushMine(){ const pl = RM.play; if (!pl || !FB) return;
+  FB.db.ref(`rooms/${RM.code}/battle/players/${FB.uid}`).set({ name: P.name, round: pl.round, score: pl.score, i: pl.i, done: !!pl.done }).catch(e => toast(fbErr(e))); }
+
+/* views */
+V.room = () => {
+  if (RM.phase === 'loading') return `<section class="view t-room"><div class="tpanel center" style="padding:40px 20px"><div class="mic-wrap"><div class="wave on">${'<i></i>'.repeat(5)}</div></div><p>সংযোগ হচ্ছে…</p></div></section>`;
+  if (RM.phase === 'error') return `<section class="view t-room">${backBtn('#room', 'গ্রুপ রুম')}<div class="tpanel center"><div style="font-size:40px">😕</div><p style="margin-top:6px">${esc(RM.err)}</p></div><button class="btn tbtn big" data-act="rmRetry">আবার চেষ্টা করুন</button></section>`;
+  if (RM.phase === 'name') return `<section class="view t-room"><div class="room-hero"><div class="eyebrow" style="color:#A8F0DA">গ্রুপে যোগ দিন</div><h1 class="h1" style="margin-top:4px">${esc(RM.meta.name)}</h1><p class="small" style="margin-top:6px">গ্রুপের সবাই আপনার নাম দেখবে।</p></div>
+    <label class="small muted" for="rmName">আপনার নাম</label><input class="search" id="rmName" maxlength="24" placeholder="যেমন: Rahim" value="${esc(P.name || '')}">
+    <button class="btn tbtn big" data-act="rmJoinName">যোগ দিন</button></section>`;
+  if (RM.phase === 'room') {
+    const n = Object.keys(RM.members || {}).length;
+    const tabs = `<div class="rtabs" role="group" aria-label="রুম">${[['chat','💬 চ্যাট'],['battle','⚔️ চ্যালেঞ্জ'],['voice','🎙️ ভয়েস']].map(([k, v]) => `<button data-act="rmTab" data-k="${k}" aria-pressed="${RM.tab === k}">${v}</button>`).join('')}</div>`;
+    let body = '';
+    if (RM.tab === 'chat') body = `<div class="chatbox" id="chatBox" aria-live="polite">${RM.msgs.length ? RM.msgs.map(msgHTML).join('') : '<div class="sys empty">প্রথম মেসেজটা আপনিই দিন! ইংরেজিতে লেখার চেষ্টা করুন 🙂</div>'}</div>
+      <div class="quick">${QUICK.map(q => `<button data-act="rmQuick" data-t="${esc(q)}">${esc(q)}</button>`).join('')}</div>
+      <div class="composer"><textarea id="rmInput" maxlength="500" rows="1" placeholder="ইংরেজিতে লিখুন…" aria-label="মেসেজ">${esc(RM.draft)}</textarea><button class="send" data-act="rmSend" aria-label="পাঠান">${SEND}</button></div>`;
+    if (RM.tab === 'battle') body = RM.play && !RM.play.done && RM.battle && RM.battle.info && RM.play.round === RM.battle.info.round ? `${playHTML()}<div class="eyebrow" style="margin-top:6px">লাইভ স্কোর</div><div id="rmBoard">${boardHTML()}</div>` : `<div id="rmBoard">${boardHTML()}</div>`;
+    if (RM.tab === 'voice') body = `<div class="tpanel center"><div style="font-size:48px">🎙️</div><h2 class="h2" style="margin-top:6px">গ্রুপ ভয়েস রুম</h2>
+      <p class="small muted" style="margin-top:6px">এই গ্রুপের সবাই নিচের বাটনে চাপলে একই ভয়েস রুমে ঢুকবেন। একসাথে ইংরেজিতে কথা বলুন!</p></div>
+      <a class="btn tbtn big" href="${voiceLink(RM.code)}" target="_blank" rel="noopener" data-act="rmVoice">ভয়েস রুমে যোগ দিন</a>
+      <div class="rules"><b style="color:var(--ink)">যেভাবে কাজ করে</b><ul style="margin:6px 0 0;padding-left:18px">
+        <li>ভয়েস রুম চলে ফ্রি Jitsi Meet এ, নতুন ট্যাবে খুলবে।</li>
+        <li>প্রথমবার মাইক্রোফোনের অনুমতি দিন। যে প্রথমে ঢুকবে, তাকে হয়তো একবার Google দিয়ে লগইন করতে বলবে।</li>
+        <li>ফোনে Jitsi Meet অ্যাপ থাকলে সেখানেই খুলবে, আরও ভালো চলবে।</li>
+        <li>কথা শেষে এই ট্যাবে ফিরে এসে চ্যাট আর চ্যালেঞ্জ চালিয়ে যান।</li></ul></div>`;
+    return `<section class="view t-room">
+      <div class="row between nowrap">${backBtn('#room', 'সব গ্রুপ')}<button class="btn sm" data-act="rmInvite">${ICON.share} আমন্ত্রণ</button></div>
+      <div class="tpanel" style="padding:14px 16px"><div class="row between nowrap"><div style="min-width:0"><h1 class="h2" style="font-size:20px">${esc(RM.meta.name)}</h1><div class="small muted">অনলাইনে <b id="rmCount">${bn(n)}</b> জন</div></div><span class="codechip">${esc(RM.code)}</span></div>
+        <div class="members" id="rmMembers" style="margin-top:10px">${membersHTML()}</div></div>
+      ${tabs}${body}</section>`;
+  }
+  const saved = P.rooms || [];
+  return `<section class="view t-room">${backBtn('#practice', 'অনুশীলন স্টুডিও')}
+    <div class="room-hero"><div class="eyebrow" style="color:#A8F0DA">গ্রুপ রুম</div><h1 class="h1" style="margin-top:4px">বন্ধুদের সাথে একসাথে ইংরেজি প্র্যাকটিস</h1>
+      <p class="small" style="margin-top:8px">দেশ-বিদেশ যেখানেই থাকুন, একটা গ্রুপ খুলে কোড শেয়ার করুন। চ্যাট, লাইভ চ্যালেঞ্জ আর ভয়েসে কথা বলা, সব এক জায়গায়।</p></div>
+    ${saved.length ? `<div><div class="eyebrow" style="margin-bottom:8px">আপনার গ্রুপ</div><div class="saved-rooms">${saved.map(r => `<a href="#room/${esc(r.code)}"><span>${esc(r.name)}</span><span class="codechip">${esc(r.code)}</span></a>`).join('')}</div></div>` : ''}
+    <div class="tpanel"><h2 class="h2">কোড দিয়ে যোগ দিন</h2><div class="row nowrap" style="margin-top:10px"><input class="input grow" id="rmCode" maxlength="6" placeholder="যেমন: K7M2QX" autocomplete="off"><button class="btn tbtn" data-act="rmJoin">যোগ দিন</button></div></div>
+    <div class="tpanel"><h2 class="h2">নতুন গ্রুপ খুলুন</h2>
+      <label class="small muted" for="rmName" style="display:block;margin-top:10px">আপনার নাম</label><input class="search" id="rmName" maxlength="24" placeholder="যেমন: Julfikar" value="${esc(P.name || '')}">
+      <label class="small muted" for="rmTitle" style="display:block;margin-top:10px">গ্রুপের নাম</label><input class="search" id="rmTitle" maxlength="40" placeholder="যেমন: Freelancer English Club">
+      <button class="btn tbtn big" style="margin-top:12px" data-act="rmCreate">গ্রুপ খুলুন</button></div>
+    <div class="rules"><b style="color:var(--ink)">নিরাপদ থাকুন</b><ul style="margin:6px 0 0;padding-left:18px">
+      <li>গ্রুপগুলো প্রাইভেট। কোড জানলেই শুধু ঢোকা যায়, তাই শুধু পরিচিতদের সাথে কোড শেয়ার করুন।</li>
+      <li>ফোন নাম্বার, ঠিকানা, পাসওয়ার্ড বা টাকার তথ্য চ্যাটে দেবেন না।</li>
+      <li>গ্রুপ রুম ১৩ বছরের বেশি বয়সীদের জন্য।</li></ul></div>
+    ${credit()}</section>`;
+};
+
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-act]'); if (!el) return;
+  const a = el.dataset.act;
+  if (a === 'rmCreate') { roomCreate(); return; }
+  if (a === 'rmJoin') { const c = cleanCode($('#rmCode')?.value); if (c.length !== 6) { toast('৬ অক্ষরের কোডটা লিখুন'); return; } location.hash = '#room/' + c; return; }
+  if (a === 'rmJoinName') { const nm = ($('#rmName')?.value || '').trim(); if (!nm) { toast('আপনার নাম লিখুন'); return; } P.name = nm.slice(0, 24); save(); RM.phase = 'room'; roomListen(); return; }
+  if (a === 'rmRetry') { if (RM.code) roomEnter(RM.code); else { RM.phase = 'lobby'; render(); } return; }
+  if (a === 'rmTab') { RM.draft = ($('#rmInput') || {}).value ?? RM.draft; RM.tab = el.dataset.k; render(); if (RM.tab === 'chat') { const b = $('#chatBox'); if (b) b.scrollTop = b.scrollHeight; } return; }
+  if (a === 'rmSend') { const inp = $('#rmInput'); const t = inp ? inp.value : ''; if (!t.trim()) return; sendMsg(t); if (inp) { inp.value = ''; inp.focus(); } RM.draft = ''; return; }
+  if (a === 'rmQuick') { sendMsg(el.dataset.t); return; }
+  if (a === 'rmInvite') { const link = roomLink(RM.code); const text = `English Gym এ আমার গ্রুপে যোগ দাও! চলো একসাথে ইংরেজি প্র্যাকটিস করি।\nগ্রুপ কোড: ${RM.code}`;
+    if (navigator.share) navigator.share({ title:'English Gym গ্রুপ', text, url:link }).catch(() => {}); else copy(text + '\n' + link); return; }
+  if (a === 'rmVoice') { sendMsg(`🎙️ ${P.name} ভয়েস রুমে যোগ দিয়েছে`); return; }
+  if (a === 'rbNew') { if (!FB) return; const info = { seed: Math.floor(Math.random()*9e8) + 1e8, round: Date.now(), by: P.name };
+    FB.db.ref(`rooms/${RM.code}/battle/info`).set(info).then(() => { sendMsg(`⚔️ ${P.name} নতুন চ্যালেঞ্জ শুরু করেছে! চ্যালেঞ্জ ট্যাবে যোগ দিন।`); }).catch(e => toast(fbErr(e)));
+    RM.play = { round: info.round, qs: chQuestions(info.seed), i:0, score:0, answered:null, done:false }; RM.battle = { ...(RM.battle || {}), info }; pushMine(); render(); return; }
+  if (a === 'rbJoin') { const info = RM.battle && RM.battle.info; if (!info) return; const mine = RM.battle.players && RM.battle.players[FB.uid];
+    const resume = mine && mine.round === info.round ? mine : null;
+    RM.play = { round: info.round, qs: chQuestions(info.seed), i: resume ? Math.min(resume.i, 9) : 0, score: resume ? resume.score : 0, answered:null, done:false }; pushMine(); render(); return; }
+  if (a === 'rb') { const pl = RM.play; if (!pl || pl.answered !== null) return; const i = +el.dataset.i; pl.answered = i; if (pl.qs[pl.i].opts[i].ok) { pl.score++; addXP(5); } render(); return; }
+  if (a === 'rbNext') { const pl = RM.play; pl.i++; pl.answered = null; if (pl.i >= 10) { pl.done = true; pl.i = 10; sendMsg(`🏁 ${P.name} চ্যালেঞ্জ শেষ করেছে: ${bn(pl.score)}/১০`); confetti(); } pushMine(); render(); return; }
+});
+document.addEventListener('keydown', e => {
+  if (e.target.id === 'rmInput' && e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); $('[data-act="rmSend"]')?.click(); }
+  if (e.target.id === 'rmCode' && e.key === 'Enter') { e.preventDefault(); $('[data-act="rmJoin"]')?.click(); }
+});
+document.addEventListener('input', e => { if (e.target.id === 'rmInput') RM.draft = e.target.value; });
+window.addEventListener('pagehide', () => { if (FB && RM.code && RM.phase === 'room') { try { FB.db.ref(`rooms/${RM.code}/members/${FB.uid}`).remove(); } catch {} } });
+
 /* ================= ROUTER ================= */
-const NAVMAP = { workout:'home', words:'learn', daily:'learn', phrases:'learn', freelance:'learn', quiz:'practice', speak:'practice', sounds:'practice', build:'practice', dictation:'practice', ch:'practice' };
+const NAVMAP = { workout:'home', words:'learn', daily:'learn', phrases:'learn', freelance:'learn', quiz:'practice', room:'practice', speak:'practice', sounds:'practice', build:'practice', dictation:'practice', ch:'practice' };
 function render(){
   app.innerHTML = (V[cur] || V.home)();
   const navKey = NAVMAP[cur] || cur;
@@ -982,6 +1186,8 @@ function go(){
   const h = (location.hash || '#home').slice(1); const parts = h.split('/'); const [n, a] = parts;
   cur = V[n] ? n : 'home'; arg = a || '';
   if (cur === 'ch') chOpen(parts);
+  if (cur !== 'room' && RM.code) roomLeave();
+  if (cur === 'room') { const c = cleanCode(arg); if (c.length === 6) { if (RM.code !== c || RM.phase === 'error' || RM.phase === 'lobby') { roomEnter(c); return; } } else if (RM.code) roomLeave(); }
   if (rec) { try { rec.abort(); } catch {} } SP.status = 'idle'; SN.listening = false;
   if (cur === 'workout' && (!W || W.step === 4)) newWorkout();
   if (cur === 'quiz') Q.mode = 'start';
