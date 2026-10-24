@@ -210,6 +210,7 @@ V.home = () => {
     <a href="#phrases"><span class="ic" style="background:var(--bad-soft);color:var(--bad)">${svgI('M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z')}</span><b>কাজের ফ্রেজ</b><small>ক্যাজুয়াল ও প্রফেশনাল</small></a>
   </div>
 
+  <a class="studio-hero" href="#practice" style="text-decoration:none;display:block"><div class="eyebrow" style="color:#FFC9AE">নতুন · অনুশীলন স্টুডিও</div><h2 class="h2" style="margin-top:4px;position:relative;z-index:1">🎤 জোরে বলুন, অ্যাপ শুনে বলবে ঠিক হলো কিনা</h2><p class="small" style="margin-top:4px;position:relative;z-index:1">উচ্চারণ ক্লিনিক · বাক্য বানাও · শুনো আর লিখো · বন্ধুকে চ্যালেঞ্জ →</p></a>
   <a class="banner kids" href="#kids"><span class="emo">🦉</span><span><b>কিডস কর্নার</b><br><span class="small">ABC, ছবি দেখে শব্দ, রং, সংখ্যা আর মজার গেম</span></span></a>
 
   <a class="card" href="#progress">
@@ -675,8 +676,298 @@ V.about = () => `<section class="view">
   <button class="btn primary big" data-act="shareApp">${ICON.share} English Gym শেয়ার করুন</button>
   ${credit()}</section>`;
 
+/* ================= PRACTICE STUDIO ================= */
+const SOUNDS = window.EG_SOUNDS || [];
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+const NUMW = {zero:'0',one:'1',two:'2',three:'3',four:'4',five:'5',six:'6',seven:'7',eight:'8',nine:'9',ten:'10',eleven:'11',twelve:'12',fifteen:'15',twenty:'20',thirty:'30',fifty:'50',hundred:'100'};
+const norm = s => String(s).toLowerCase().replace(/[’‘]/g, "'").replace(/[^a-z0-9'\s-]/g, ' ').replace(/-/g, ' ').split(/\s+/).filter(Boolean).map(w => NUMW[w] || w);
+function align(target, said){ /* LCS over words → which target words were matched */
+  const a = norm(target), b = norm(said), n = a.length, m = b.length;
+  const dp = Array.from({length:n+1}, () => new Array(m+1).fill(0));
+  for (let i = n-1; i >= 0; i--) for (let j = m-1; j >= 0; j--) dp[i][j] = a[i] === b[j] ? dp[i+1][j+1] + 1 : Math.max(dp[i+1][j], dp[i][j+1]);
+  const okA = new Array(n).fill(false), okB = new Array(m).fill(false); let i = 0, j = 0;
+  while (i < n && j < m) { if (a[i] === b[j]) { okA[i] = okB[j] = true; i++; j++; } else if (dp[i+1][j] >= dp[i][j+1]) i++; else j++; }
+  return { words: a, okA, saidWords: b, okB, score: n ? okA.filter(Boolean).length / n : 0 };
+}
+const displayWords = s => String(s).replace(/[.!?]+$/, '').split(/\s+/).filter(Boolean);
+let rec = null;
+function listen({ onInterim, onFinal, onError }){
+  if (!SR) { onError('nosupport'); return; }
+  try { rec && rec.abort(); } catch {}
+  let alts = [], failed = false;
+  rec = new SR(); rec.lang = 'en-US'; rec.interimResults = true; rec.maxAlternatives = 4; rec.continuous = false;
+  rec.onresult = e => { const r = e.results[e.results.length - 1]; if (r.isFinal) alts = Array.from(r).map(x => x.transcript); else onInterim && onInterim(r[0].transcript); };
+  rec.onerror = e => { failed = true; onError(e.error); };
+  rec.onend = () => { rec = null; if (!failed) onFinal(alts); };
+  try { rec.start(); } catch { onError('start'); }
+}
+const micErr = code => code === 'not-allowed' || code === 'service-not-allowed' ? 'মাইক্রোফোনের অনুমতি দিন (ব্রাউজারের ঠিকানার পাশের 🔒 আইকনে চাপ দিয়ে Microphone → Allow)।'
+  : code === 'no-speech' ? 'কিছু শুনতে পাইনি। মাইক চেপে একটু জোরে বলুন।' : code === 'nosupport' ? 'এই ব্রাউজারে কথা শোনার সুবিধা নেই। Android এ Google Chrome ব্যবহার করুন।'
+  : code === 'network' ? 'ইন্টারনেট লাগবে। কথা চেনার জন্য Chrome অনলাইন সার্ভিস ব্যবহার করে।' : 'আবার চেষ্টা করুন।';
+const MIC = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>';
+const STOP = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="7" y="7" width="10" height="10" rx="2"/></svg>';
+const wave = on => `<div class="wave ${on ? 'on' : ''}" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>`;
+const toolHead = (back, eyebrow, title, sub) => `${backBtn(back, 'অনুশীলন স্টুডিও')}<div><div class="eyebrow" style="color:var(--ta)">${eyebrow}</div><h1 class="h1">${title}</h1>${sub ? `<p class="muted small">${sub}</p>` : ''}</div>`;
+
+/* ----- hub ----- */
+V.practice = () => `<section class="view">
+  <div class="studio-hero"><div class="eyebrow" style="color:#FFC9AE">অনুশীলন স্টুডিও</div><h1 class="h1" style="margin-top:4px;position:relative;z-index:1">লজ্জা ছাড়া প্র্যাকটিস করুন।<br>এখানে ভুল করলে কেউ দেখবে না।</h1>
+    <p class="small" style="margin-top:8px;position:relative;z-index:1">বলুন, শুনুন, বাক্য বানান, বন্ধুকে চ্যালেঞ্জ দিন। সবকিছু ফোনেই, একদম ফ্রি।</p></div>
+  <div class="tools">
+    <a class="tool t-speak wide" href="#speak"><span class="ic">${MIC}</span><span class="grow"><b>বলো শুনি</b><br><small>বাক্যটা জোরে বলুন। অ্যাপ শুনে দেখাবে কোন শব্দ ঠিক হলো, কোনটা হলো না।</small></span><span class="new">নতুন</span></a>
+    <a class="tool t-sound" href="#sounds"><span class="ic">${svgI('M3 10v4M7 7v10M11 4v16M15 8v8M19 11v2')}</span><b>উচ্চারণ ক্লিনিক</b><small>V/B, S/SH, ship/sheep: বাংলাদেশিদের কঠিন শব্দগুলো</small><span class="new">নতুন</span></a>
+    <a class="tool t-build" href="#build"><span class="ic">${svgI('M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z')}</span><b>বাক্য বানাও</b><small>শব্দ সাজিয়ে বাংলা থেকে ইংরেজি বাক্য</small><span class="new">নতুন</span></a>
+    <a class="tool t-dict" href="#dictation"><span class="ic">${svgI('M3 18v-6a9 9 0 0 1 18 0v6M21 19a2 2 0 0 1-2 2h-1v-6h3zM3 19a2 2 0 0 0 2 2h1v-6H3z')}</span><b>শুনো আর লিখো</b><small>ধীরে, স্বাভাবিক বা দ্রুত শুনে লিখুন</small><span class="new">নতুন</span></a>
+    <a class="tool t-chal" href="#ch"><span class="ic">${svgI('M14.5 17.5L3 6V3h3l11.5 11.5M13 19l6-6M16 16l4 4M19 21l2-2')}</span><b>বন্ধুকে চ্যালেঞ্জ</b><small>একই ১০টা প্রশ্ন, কে বেশি পায়?</small><span class="new">নতুন</span></a>
+    <a class="tool t-hunt wide" href="#quiz"><span class="ic">${svgI('M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM20 20l-4-4M8.5 11l2 2 3.5-3.5')}</span><span class="grow"><b>Mistakes Hunter</b><br><small>${bn(D.MISTAKES.length)}টা কমন ভুল · ক্লাসিক, সত্য/মিথ্যা, স্পিড রাউন্ড</small></span></a>
+  </div>${credit()}</section>`;
+
+/* ----- 1. speak ----- */
+const SPOOL = {
+  easy: DAILY.filter(d => displayWords(d[1]).length <= 6).map(d => ({ en:d[1], bn:d[2] })),
+  mid: DAILY.filter(d => { const n = displayWords(d[1]).length; return n >= 7; }).map(d => ({ en:d[1], bn:d[2] })).concat(D.PHRASES.map(p => ({ en:p[2], bn:p[1] }))),
+  hard: FL.LINES.filter(l => displayWords(l[1]).length >= 6).map(l => ({ en:l[1], bn:l[2] })).concat(D.PHRASES.map(p => ({ en:p[3], bn:p[1] })))
+};
+let SP = { level:'easy', item:null, status:'idle', interim:'', res:null, err:'', count:0, good:0, audio:null, recording:false };
+const nextSpeak = () => { SP.item = sample(SPOOL[SP.level], 1)[0]; SP.status = 'idle'; SP.res = null; SP.interim = ''; SP.err = ''; if (SP.audio) { URL.revokeObjectURL(SP.audio); SP.audio = null; } };
+V.speak = () => {
+  if (!SP.item) nextSpeak();
+  const it = SP.item, r = SP.res, pct = r ? Math.round(r.score * 100) : 0;
+  const verdict = !r ? '' : pct >= 90 ? 'অসাধারণ! একদম পরিষ্কার।' : pct >= 70 ? 'খুব ভালো! আর একটু হলেই পারফেক্ট।' : pct >= 40 ? 'ভালো চেষ্টা! লাল শব্দগুলো আরেকবার শুনে বলুন।' : 'আবার চেষ্টা করুন। আগে একবার শুনে নিন, তারপর ধীরে বলুন।';
+  return `<section class="view t-speak">${toolHead('#practice', 'বলো শুনি · Speaking Coach', 'জোরে বলুন, অ্যাপ শুনবে', 'কেউ শুনছে না, তাই নির্ভয়ে বলুন। যত বলবেন, তত সহজ হবে।')}
+    <div class="seg" role="group" aria-label="লেভেল">${[['easy','সহজ'],['mid','মাঝারি'],['hard','কঠিন (ফ্রিল্যান্স)']].map(([k, v]) => `<button data-act="splevel" data-k="${k}" aria-pressed="${SP.level === k}">${v}</button>`).join('')}</div>
+    <div class="tpanel">
+      <div class="eyebrow">এই বাক্যটা বলুন</div>
+      ${r ? `<div class="words-res" style="margin-top:8px">${displayWords(it.en).map((w, i) => `<span class="${r.okA[i] ? 'w-ok' : 'w-bad'}">${esc(w)}</span>`).join('')}</div>` : `<div class="say-big" style="margin-top:6px">${esc(it.en)}</div>`}
+      <div class="muted" style="margin-top:6px">${esc(it.bn)}</div>
+      <div class="row" style="margin-top:12px">${sayBtn(it.en, 'স্বাভাবিক গতিতে শুনুন')}<button class="btn sm" data-act="saySlow" data-t="${esc(it.en)}">🐢 ধীরে শুনুন</button></div>
+    </div>
+    <div class="mic-wrap">
+      <button class="mic ${SP.status === 'listening' ? 'on' : ''}" data-act="spMic" aria-label="${SP.status === 'listening' ? 'থামান' : 'বলা শুরু করুন'}">${SP.status === 'listening' ? STOP : MIC}</button>
+      ${wave(SP.status === 'listening')}
+      <div class="live">${SP.status === 'listening' ? (SP.interim ? '“' + esc(SP.interim) + '”' : 'শুনছি… এখন বলুন') : SP.err ? `<span style="color:var(--bad);font-style:normal">${esc(SP.err)}</span>` : r ? '' : 'মাইকে চাপ দিয়ে বাক্যটা বলুন'}</div>
+    </div>
+    ${r ? `<div class="tpanel pop"><div class="row between nowrap"><b style="font-size:18px">${verdict}</b><span class="say-big" style="color:var(--ta)">${bn(pct)}%</span></div>
+      <div class="meter" style="margin-top:10px"><i style="width:${pct}%"></i></div>
+      <p class="small muted" style="margin-top:10px">অ্যাপ যা শুনেছে: “${esc(r.heard || '—')}”</p></div>
+      <div class="two"><button class="btn big" data-act="spMic">আবার বলি</button><button class="btn tbtn big" data-act="spNext">পরের বাক্য →</button></div>` : `<button class="btn ghost" data-act="spNext">এই বাক্যটা বাদ দিন →</button>`}
+    <div class="card"><div class="row between nowrap"><div><b>নিজের গলা শুনুন</b><p class="small muted">রেকর্ড করে আসল উচ্চারণের সাথে মিলিয়ে নিন</p></div>
+      <button class="btn ${SP.recording ? 'tbtn' : ''}" data-act="spRec">${SP.recording ? '■ থামান' : '● রেকর্ড'}</button></div>
+      ${SP.audio ? `<audio controls src="${SP.audio}" style="width:100%;margin-top:10px"></audio>` : ''}</div>
+    <p class="small muted center">আজ বলেছেন ${bn(SP.count)}টা বাক্য · ভালো হয়েছে ${bn(SP.good)}টা</p>
+  </section>`;
+};
+function speakStart(){
+  if (SP.status === 'listening') { try { rec && rec.stop(); } catch {} return; }
+  speechSynthesis && speechSynthesis.cancel();
+  SP.status = 'listening'; SP.interim = ''; SP.err = ''; SP.res = null; render();
+  listen({
+    onInterim: t => { SP.interim = t; const l = document.querySelector('.live'); if (l) l.textContent = '“' + t + '”'; },
+    onFinal: alts => {
+      SP.status = 'done';
+      if (!alts.length) { SP.err = micErr('no-speech'); render(); return; }
+      let best = null; alts.forEach(a => { const x = align(SP.item.en, a); if (!best || x.score > best.score) { best = x; best.heard = a; } });
+      SP.res = best; SP.count++;
+      if (best.score >= .7) { SP.good++; addXP(5); if (best.score >= .9) confetti(); }
+      render();
+    },
+    onError: code => { SP.status = 'idle'; SP.err = micErr(code); render(); }
+  });
+}
+let mediaRec = null;
+async function recToggle(){
+  if (SP.recording && mediaRec) { mediaRec.stop(); return; }
+  if (!navigator.mediaDevices || !window.MediaRecorder) { toast('এই ব্রাউজারে রেকর্ড করা যায় না'); return; }
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio:true });
+    const chunks = []; mediaRec = new MediaRecorder(stream);
+    mediaRec.ondataavailable = e => chunks.push(e.data);
+    mediaRec.onstop = () => { stream.getTracks().forEach(t => t.stop()); if (SP.audio) URL.revokeObjectURL(SP.audio); SP.audio = URL.createObjectURL(new Blob(chunks, { type: mediaRec.mimeType || 'audio/webm' })); SP.recording = false; mediaRec = null; render(); };
+    mediaRec.start(); SP.recording = true; render();
+    setTimeout(() => { if (mediaRec && mediaRec.state === 'recording') mediaRec.stop(); }, 8000);
+  } catch { toast(micErr('not-allowed')); }
+}
+
+/* ----- 2. pronunciation clinic ----- */
+let SN = { group:'mix', mode:'listen', round:0, total:10, q:null, answered:null, score:0, said:'', listening:false, err:'' };
+function newSoundQ(){
+  const groups = SN.group === 'mix' ? SOUNDS : SOUNDS.filter(g => g.key === SN.group);
+  const g = sample(groups, 1)[0], pair = sample(g.pairs, 1)[0], target = pair[Math.random() < .5 ? 0 : 1];
+  SN.q = { g, pair, target }; SN.answered = null; SN.said = ''; SN.err = '';
+}
+function startSounds(){ SN.round = 0; SN.score = 0; newSoundQ(); if (SN.mode === 'listen') { const t = SN.q.target; setTimeout(() => say(t, .8), 350); } }
+V.sounds = () => {
+  const groupChips = `<div class="chips scroll">${[['mix','সব মিলিয়ে']].concat(SOUNDS.map(g => [g.key, g.title])).map(([k, v]) => `<button class="chip" data-act="sngroup" data-k="${k}" aria-pressed="${SN.group === k}">${esc(v)}</button>`).join('')}</div>`;
+  const modeSeg = `<div class="seg" role="group" aria-label="মোড"><button data-act="snmode" data-k="listen" aria-pressed="${SN.mode === 'listen'}">👂 শুনে চিনুন</button><button data-act="snmode" data-k="speak" aria-pressed="${SN.mode === 'speak'}">🎤 বলে দেখান</button></div>`;
+  const head = toolHead('#practice', 'উচ্চারণ ক্লিনিক', 'যে শব্দগুলো আমরা গুলিয়ে ফেলি', 'বাংলাদেশিদের সবচেয়ে কমন উচ্চারণ সমস্যা, একটা একটা করে ঠিক করুন।');
+  if (!SN.q) return `<section class="view t-sound">${head}${modeSeg}${groupChips}
+    <div class="tools">${SOUNDS.map(g => `<button class="tool" data-act="sngroup" data-k="${g.key}" style="text-align:left;min-height:110px;border-color:${SN.group === g.key ? 'var(--ta)' : 'var(--tb)'}"><b>${esc(g.title)}</b><small style="font-family:var(--f-display);font-size:15px;color:var(--ta);font-weight:700">${esc(g.sub)}</small></button>`).join('')}</div>
+    <button class="btn tbtn big" data-act="snstart">শুরু করুন · ১০ রাউন্ড</button></section>`;
+  if (SN.round >= SN.total) return `<section class="view t-sound">${head}<div class="tpanel center pop"><div class="eyebrow">আপনার স্কোর</div><div class="say-big" style="font-size:52px;color:var(--ta)">${bn(SN.score)}/${bn(SN.total)}</div><p>${SN.score >= 8 ? 'আপনার কান আর জিভ দুটোই দারুণ!' : 'প্রতিদিন ৫ মিনিট এই ক্লিনিকে আসুন, পার্থক্য নিজেই টের পাবেন।'}</p></div>
+    <button class="btn tbtn big" data-act="snstart">আবার খেলুন</button><button class="btn big" data-act="snreset">অন্য শব্দ বাছুন</button></section>`;
+  const q = SN.q, ans = SN.answered;
+  let body;
+  if (SN.mode === 'listen') {
+    body = `<div class="tpanel center"><div class="eyebrow">কোন শব্দটা শুনলেন?</div>
+      <div class="speeds" style="margin-top:10px"><button class="main" data-act="say" data-t="${esc(q.target)}">🔊 আবার শুনুন</button><button data-act="saySlow" data-t="${esc(q.target)}">🐢 ধীরে</button></div></div>
+      <div class="pairs">${q.pair.map(w => `<button class="pairbtn ${ans !== null ? (w === q.target ? 'good' : (w === ans ? 'bad' : '')) : ''}" data-act="snpick" data-w="${esc(w)}" ${ans !== null ? 'disabled' : ''}>${esc(w)}</button>`).join('')}</div>`;
+  } else {
+    const other = q.pair.find(w => w !== q.target);
+    body = `<div class="tpanel center"><div class="eyebrow">এই শব্দটা বলুন</div><div class="say-big" style="font-size:44px;color:var(--ta)">${esc(q.target)}</div>
+      <p class="small muted">সাবধান! যেন <b>${esc(other)}</b> না শোনায়</p>
+      <div class="speeds" style="margin-top:8px"><button data-act="say" data-t="${esc(q.target)}">🔊 শুনুন</button><button data-act="say" data-t="${esc(other)}">🔊 ${esc(other)} শুনুন</button></div></div>
+      <div class="mic-wrap"><button class="mic ${SN.listening ? 'on' : ''}" data-act="snmic" aria-label="বলুন" ${ans !== null ? 'disabled' : ''}>${SN.listening ? STOP : MIC}</button>${wave(SN.listening)}
+      <div class="live">${SN.err ? `<span style="color:var(--bad);font-style:normal">${esc(SN.err)}</span>` : SN.said ? `অ্যাপ শুনেছে: “${esc(SN.said)}”` : SN.listening ? 'শুনছি…' : 'মাইকে চাপ দিয়ে বলুন'}</div></div>`;
+  }
+  return `<section class="view t-sound">${head}${modeSeg}${stepsBar(SN.round, SN.total)}${body}
+    ${ans !== null ? `<div class="tip pop"><b>${SN.lastOk ? 'একদম ঠিক! ✓' : 'এবার হয়নি।'} ${esc(q.pair[0])} / ${esc(q.pair[1])}</b><br>${esc(q.g.tip)}</div><button class="btn tbtn big" data-act="snnext">পরেরটা →</button>` : `<div class="tip"><b>${esc(q.g.title)}:</b> ${esc(q.g.tip)}</div>`}
+  </section>`;
+};
+function soundAnswer(ok, val){ SN.answered = val; SN.lastOk = ok; if (ok) { SN.score++; addXP(3); } render(); }
+
+/* ----- 3. sentence builder ----- */
+const BPOOL = D.TRANSLATE.filter(t => displayWords(t[1]).length <= 10).map(t => ({ bn:t[0], en:t[1] }))
+  .concat(DAILY.filter(d => { const n = displayWords(d[1]).length; return n >= 3 && n <= 8; }).map(d => ({ bn:d[2], en:d[1] })));
+const tokenKey = w => w.toLowerCase().replace(/[.,!?]/g, '');
+let BB = { round:0, total:10, q:null, picked:[], checked:null, score:0 };
+function newBuild(){
+  const it = sample(BPOOL, 1)[0], words = displayWords(it.en);
+  const keys = new Set(words.map(tokenKey));
+  const extras = shuffle(BPOOL.flatMap(p => displayWords(p.en))).filter(w => !keys.has(tokenKey(w)) && w.length > 1).slice(0, words.length > 6 ? 1 : 2);
+  BB.q = { ...it, words, tiles: shuffle(words.concat(extras).map((t, i) => ({ id:i, t }))) };
+  BB.picked = []; BB.checked = null;
+}
+V.build = () => {
+  if (!BB.q) newBuild();
+  const head = toolHead('#practice', 'বাক্য বানাও', 'বাংলা দেখে ইংরেজি বাক্য সাজান', 'মাথায় বাংলা থেকে ইংরেজির শব্দের ক্রমটা অভ্যাস হয়ে যাবে।');
+  if (BB.round >= BB.total) return `<section class="view t-build">${head}<div class="tpanel center pop"><div class="eyebrow">সেশন শেষ</div><div class="say-big" style="font-size:52px;color:var(--ta)">${bn(BB.score)}/${bn(BB.total)}</div><p>${BB.score >= 8 ? 'আপনি ইংরেজিতে ভাবতে শুরু করেছেন!' : 'দারুণ শুরু! প্রতিদিন একটা সেশন করুন।'}</p></div><button class="btn tbtn big" data-act="bbagain">নতুন ১০টা বাক্য</button></section>`;
+  const q = BB.q, used = new Set(BB.picked), chk = BB.checked;
+  return `<section class="view t-build">${head}${stepsBar(BB.round, BB.total)}
+    <div class="tpanel"><div class="eyebrow">ইংরেজিতে সাজান</div><div class="say-big" style="font-family:var(--f-body);font-size:22px;margin-top:4px">${esc(q.bn)}</div></div>
+    <div class="slot ${chk === true ? 'ok' : chk === false ? 'no' : ''}" aria-label="আপনার বাক্য">${BB.picked.length ? BB.picked.map(id => `<button class="tile" data-act="bbun" data-id="${id}" ${chk !== null ? 'disabled' : ''}>${esc(q.tiles.find(t => t.id === id).t)}</button>`).join('') : '<span class="muted small" style="padding:8px">নিচের শব্দগুলোতে চাপ দিয়ে বাক্য বানান</span>'}</div>
+    <div class="tilebox">${q.tiles.map(t => `<button class="tile ${used.has(t.id) ? 'used' : ''}" data-act="bbpick" data-id="${t.id}" ${chk !== null ? 'disabled' : ''}>${esc(t.t)}</button>`).join('')}</div>
+    ${chk === null ? `<div class="two"><button class="btn big" data-act="bbhint">💡 একটা শব্দ দেখাও</button><button class="btn tbtn big" data-act="bbcheck" ${BB.picked.length ? '' : 'disabled'}>মিলিয়ে দেখুন</button></div>`
+    : `<div class="tip pop"><b>${chk ? 'একদম ঠিক! 🎉' : 'প্রায় হয়েছে! সঠিক বাক্য:'}</b><div class="row between nowrap" style="margin-top:4px"><span style="font-size:18px;font-weight:700">${esc(q.en)}</span>${sayBtn(q.en)}</div></div><button class="btn tbtn big" data-act="bbnext">পরেরটা →</button>`}
+  </section>`;
+};
+
+/* ----- 7. listen & write ----- */
+const DPOOL = DAILY.filter(d => { const n = displayWords(d[1]).length; return n >= 3 && n <= 9; }).map(d => ({ en:d[1], bn:d[2] }))
+  .concat(D.TRANSLATE.map(t => ({ en:t[1], bn:t[0] })));
+let DC = { speed:.9, round:0, total:8, q:null, checked:null, res:null, sum:0, typed:'', showBn:false };
+const newDict = () => { DC.q = sample(DPOOL, 1)[0]; DC.checked = null; DC.res = null; DC.typed = ''; DC.showBn = false; };
+const SPEEDS = [[.65,'🐢 ধীরে'],[.9,'স্বাভাবিক'],[1.15,'⚡ দ্রুত']];
+V.dictation = () => {
+  if (!DC.q) newDict();
+  const head = toolHead('#practice', 'শুনো আর লিখো', 'শুনে হুবহু লিখুন', 'দ্রুত ইংরেজি বোঝার অভ্যাস। প্রথমে ধীরে শুনুন, তারপর গতি বাড়ান।');
+  if (DC.round >= DC.total) { const avg = Math.round(DC.sum / DC.total * 100);
+    return `<section class="view t-dict">${head}<div class="tpanel center pop"><div class="eyebrow">গড় নির্ভুলতা</div><div class="say-big" style="font-size:52px;color:var(--ta)">${bn(avg)}%</div><p>${avg >= 85 ? 'আপনার কান খুব তীক্ষ্ণ!' : 'নিয়মিত শুনলে দ্রুত উন্নতি হবে। পরের বার স্বাভাবিক গতিতে চেষ্টা করুন।'}</p></div><button class="btn tbtn big" data-act="dcagain">নতুন সেশন</button></section>`; }
+  const r = DC.res;
+  return `<section class="view t-dict">${head}${stepsBar(DC.round, DC.total)}
+    <div class="tpanel center"><div class="eyebrow">শুনুন</div>
+      <div class="speeds" style="margin-top:10px">${SPEEDS.map(([v, l]) => `<button class="${DC.speed === v ? 'main' : ''}" data-act="dcplay" data-v="${v}">${l}</button>`).join('')}</div>
+      <p class="small muted" style="margin-top:10px">যতবার খুশি শুনতে পারেন</p></div>
+    <label for="dcIn" class="small muted">যা শুনলেন লিখুন</label>
+    <textarea id="dcIn" placeholder="Type what you hear…" autocapitalize="off" autocomplete="off" spellcheck="false" ${DC.checked ? 'readonly' : ''} style="min-height:80px;font-size:18px">${esc(DC.typed)}</textarea>
+    ${!DC.checked ? `<div class="two"><button class="btn big" data-act="dcbn">${DC.showBn ? esc(DC.q.bn) : '💡 বাংলা অর্থ দেখাও'}</button><button class="btn tbtn big" data-act="dccheck">মিলিয়ে দেখুন</button></div>`
+    : `<div class="tpanel pop"><div class="row between nowrap"><b>${r.score >= .9 ? 'চমৎকার! প্রায় নিখুঁত।' : r.score >= .6 ? 'ভালো হয়েছে!' : 'আরেকবার শুনে দেখুন।'}</b><span class="say-big" style="color:var(--ta)">${bn(Math.round(r.score*100))}%</span></div>
+        <div class="words-res" style="margin-top:10px">${displayWords(DC.q.en).map((w, i) => `<span class="${r.okA[i] ? 'w-ok' : 'w-bad'}">${esc(w)}</span>`).join('')}</div>
+        <p class="small muted" style="margin-top:8px">${esc(DC.q.bn)}</p></div>
+      <button class="btn tbtn big" data-act="dcnext">পরেরটা →</button>`}
+  </section>`;
+};
+
+/* ----- 6. friend challenge ----- */
+let CH = { seed:0, from:null, mode:'intro', qs:[], i:0, answered:null, score:0 };
+function chQuestions(seed){ const r = rng(seed); return shuffle(D.MISTAKES, r).slice(0, 10).map(m => ({ type:'pick', m, opts: shuffle([{t:m[0], ok:false}, {t:m[1], ok:true}], r) })); }
+function chLink(){ return `${SITE}#ch/${CH.seed}/${CH.score}/${encodeURIComponent((P.name || 'বন্ধু').slice(0, 24))}`; }
+function chOpen(parts){
+  const seed = parseInt(parts[1], 10);
+  CH = { seed: seed > 0 ? seed : Math.floor(Math.random()*9e8) + 1e8, from:null, mode:'intro', qs:[], i:0, answered:null, score:0 };
+  if (seed > 0 && parts[2] !== undefined) { let name = 'বন্ধু'; try { name = decodeURIComponent(parts[3] || '') || 'বন্ধু'; } catch {} CH.from = { score: Math.max(0, Math.min(10, parseInt(parts[2], 10) || 0)), name: name.slice(0, 24) }; }
+}
+V.ch = () => {
+  const head = toolHead('#practice', 'বন্ধুকে চ্যালেঞ্জ', CH.from ? `${esc(CH.from.name)} আপনাকে চ্যালেঞ্জ দিয়েছে!` : 'বন্ধুকে চ্যালেঞ্জ দিন', '');
+  if (CH.mode === 'intro') return `<section class="view t-chal">${head}
+    <div class="tpanel center">${CH.from ? `<div class="eyebrow">${esc(CH.from.name)} এর স্কোর</div><div class="say-big" style="font-size:56px;color:var(--ta)">${bn(CH.from.score)}/১০</div><p>একই ১০টা প্রশ্ন আপনিও পাবেন। দেখি কে জেতে!</p>`
+      : `<div style="font-size:48px">⚔️</div><p style="margin-top:6px">আপনি ১০টা প্রশ্নের উত্তর দেবেন। তারপর একটা লিংক পাবেন। বন্ধু সেই লিংকে গেলে <b>হুবহু একই প্রশ্ন</b> পাবে, আর শেষে দুজনের স্কোর পাশাপাশি দেখাবে।</p>`}</div>
+    <label class="small muted" for="chName">আপনার নাম (বন্ধুরা দেখবে)</label>
+    <input class="search" id="chName" maxlength="24" placeholder="যেমন: Rahim" value="${esc(P.name || '')}">
+    <button class="btn tbtn big" data-act="chstart">${CH.from ? 'চ্যালেঞ্জ গ্রহণ করুন' : 'শুরু করুন'}</button>
+    ${credit()}</section>`;
+  if (CH.mode === 'play') { const q = CH.qs[CH.i];
+    return `<section class="view t-chal">${stepsBar(CH.i, 10)}<div class="row between nowrap"><div class="eyebrow" style="color:var(--ta)">চ্যালেঞ্জ · প্রশ্ন ${bn(CH.i+1)}/১০</div><span class="small muted">স্কোর ${bn(CH.score)}</span></div>${qBlock(q, CH.answered, 'cha')}</section>`; }
+  const me = CH.score, f = CH.from, link = chLink();
+  const verdict = !f ? 'এবার বন্ধুকে পাঠান!' : me > f.score ? `আপনি জিতেছেন! 🏆` : me === f.score ? 'ড্র! দুজনেই সমান 🤝' : `${esc(f.name)} এবার জিতেছে। আবার চেষ্টা করুন!`;
+  return `<section class="view t-chal">${head}
+    <div class="tpanel center pop"><div class="eyebrow">ফলাফল</div>
+      ${f ? `<div class="vs" style="margin-top:10px"><div class="p"><span class="small muted">আপনি</span><b>${bn(me)}</b></div><div class="mid">VS</div><div class="p"><span class="small muted">${esc(f.name)}</span><b>${bn(f.score)}</b></div></div>` : `<div class="say-big" style="font-size:56px;color:var(--ta)">${bn(me)}/১০</div>`}
+      <h2 class="h2" style="margin-top:12px">${verdict}</h2></div>
+    <button class="btn tbtn big" data-act="chshare">${ICON.share} ${f ? 'পাল্টা চ্যালেঞ্জ পাঠান' : 'বন্ধুকে চ্যালেঞ্জ পাঠান'}</button>
+    <div class="linkbox">${esc(link)}</div>
+    <button class="btn big" data-act="chcopy">লিংক কপি করুন</button>
+    <a class="btn ghost" href="#ch/new">নতুন প্রশ্নে নতুন চ্যালেঞ্জ</a>
+  </section>`;
+};
+
+/* ----- practice events ----- */
+document.addEventListener('input', e => {
+  if (e.target.id === 'dcIn') DC.typed = e.target.value;
+  if (e.target.id === 'chName') { P.name = e.target.value.trim(); save(); }
+});
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-act]'); if (!el) return;
+  const a = el.dataset.act;
+  if (a === 'saySlow') { say(el.dataset.t, .6); return; }
+  /* speak */
+  if (a === 'splevel') { SP.level = el.dataset.k; nextSpeak(); render(); return; }
+  if (a === 'spMic') { speakStart(); return; }
+  if (a === 'spNext') { nextSpeak(); render(); return; }
+  if (a === 'spRec') { recToggle(); return; }
+  /* sounds */
+  if (a === 'sngroup') { SN.group = el.dataset.k; SN.q = null; render(); return; }
+  if (a === 'snmode') { SN.mode = el.dataset.k; if (SN.q && SN.round < SN.total) { newSoundQ(); if (SN.mode === 'listen') { const t = SN.q.target; setTimeout(() => say(t, .8), 300); } } render(); return; }
+  if (a === 'snstart') { startSounds(); render(); return; }
+  if (a === 'snreset') { SN.q = null; render(); return; }
+  if (a === 'snpick') { if (SN.answered !== null) return; soundAnswer(el.dataset.w === SN.q.target, el.dataset.w); return; }
+  if (a === 'snnext') { SN.round++; if (SN.round < SN.total) { newSoundQ(); if (SN.mode === 'listen') { const t = SN.q.target; setTimeout(() => say(t, .8), 300); } } else if (SN.score >= 8) confetti(); render(); return; }
+  if (a === 'snmic') {
+    if (SN.listening) { try { rec && rec.stop(); } catch {} return; }
+    SN.listening = true; SN.err = ''; SN.said = ''; render();
+    listen({ onInterim: t => { SN.said = t; }, onFinal: alts => { SN.listening = false; if (!alts.length) { SN.err = micErr('no-speech'); render(); return; }
+        const tgt = SN.q.target.toLowerCase(); const hit = alts.some(x => norm(x).includes(tgt)); SN.said = alts[0]; soundAnswer(hit, hit ? SN.q.target : alts[0]); },
+      onError: c => { SN.listening = false; SN.err = micErr(c); render(); } });
+    return;
+  }
+  /* build */
+  if (a === 'bbpick') { const id = +el.dataset.id; if (!BB.picked.includes(id)) { BB.picked.push(id); say(BB.q.tiles.find(t => t.id === id).t, .9); } render(); return; }
+  if (a === 'bbun') { const id = +el.dataset.id; BB.picked = BB.picked.filter(x => x !== id); render(); return; }
+  if (a === 'bbhint') { const q = BB.q; const pos = BB.picked.length; const want = tokenKey(q.words[pos] || '');
+    let k = 0; while (k < BB.picked.length && tokenKey(q.tiles.find(t => t.id === BB.picked[k]).t) === tokenKey(q.words[k])) k++;
+    BB.picked = BB.picked.slice(0, k); const need = tokenKey(q.words[k] || ''); const tile = q.tiles.find(t => !BB.picked.includes(t.id) && tokenKey(t.t) === need);
+    if (tile) BB.picked.push(tile.id); void want; render(); return; }
+  if (a === 'bbcheck') { const q = BB.q; const got = BB.picked.map(id => tokenKey(q.tiles.find(t => t.id === id).t)).join(' '); const ok = got === q.words.map(tokenKey).join(' ');
+    BB.checked = ok; if (ok) { BB.score++; addXP(5); } say(q.en, .9); render(); return; }
+  if (a === 'bbnext') { BB.round++; if (BB.round < BB.total) newBuild(); else if (BB.score >= 8) confetti(); render(); return; }
+  if (a === 'bbagain') { BB.round = 0; BB.score = 0; newBuild(); render(); return; }
+  /* dictation */
+  if (a === 'dcplay') { DC.speed = +el.dataset.v; say(DC.q.en, DC.speed); document.querySelectorAll('[data-act="dcplay"]').forEach(b => b.classList.toggle('main', b === el)); return; }
+  if (a === 'dcbn') { DC.typed = ($('#dcIn') || {}).value || DC.typed; DC.showBn = true; render(); return; }
+  if (a === 'dccheck') { DC.typed = ($('#dcIn') || {}).value || ''; if (!DC.typed.trim()) { toast('আগে যা শুনলেন লিখুন'); return; }
+    DC.res = align(DC.q.en, DC.typed); DC.checked = true; DC.sum += DC.res.score; if (DC.res.score >= .8) addXP(5); render(); return; }
+  if (a === 'dcnext') { DC.round++; if (DC.round < DC.total) { newDict(); render(); setTimeout(() => say(DC.q.en, DC.speed), 300); } else render(); return; }
+  if (a === 'dcagain') { DC.round = 0; DC.sum = 0; newDict(); render(); return; }
+  /* challenge */
+  if (a === 'chstart') { const nm = ($('#chName') || {}).value || ''; P.name = nm.trim(); save(); CH.qs = chQuestions(CH.seed); CH.mode = 'play'; CH.i = 0; CH.score = 0; CH.answered = null; render(); window.scrollTo(0, 0); return; }
+  if (a === 'cha') { const i = +el.dataset.i, q = CH.qs[CH.i]; CH.answered = i; if (q.opts[i].ok) { CH.score++; addXP(5); } render(); return; }
+  if (a === 'chaNext') { CH.i++; CH.answered = null; if (CH.i >= 10) { CH.mode = 'result'; if (!CH.from || CH.score >= CH.from.score) confetti(); } render(); window.scrollTo(0, 0); return; }
+  if (a === 'chshare') { const link = chLink(); const text = `⚔️ English Gym চ্যালেঞ্জ! আমি ১০ এ ${bn(CH.score)} পেয়েছি। একই প্রশ্নে তুমি কয়টা পারবে?`;
+    if (navigator.share) navigator.share({ title:'English Gym চ্যালেঞ্জ', text, url:link }).catch(() => {}); else copy(text + '\n' + link); return; }
+  if (a === 'chcopy') { copy(chLink()); return; }
+});
+
 /* ================= ROUTER ================= */
-const NAVMAP = { workout:'home', words:'learn', daily:'learn', phrases:'learn', freelance:'learn' };
+const NAVMAP = { workout:'home', words:'learn', daily:'learn', phrases:'learn', freelance:'learn', quiz:'practice', speak:'practice', sounds:'practice', build:'practice', dictation:'practice', ch:'practice' };
 function render(){
   app.innerHTML = (V[cur] || V.home)();
   const navKey = NAVMAP[cur] || cur;
@@ -688,8 +979,10 @@ function render(){
 }
 function go(){
   stopTimer();
-  const h = (location.hash || '#home').slice(1); const [n, a] = h.split('/');
+  const h = (location.hash || '#home').slice(1); const parts = h.split('/'); const [n, a] = parts;
   cur = V[n] ? n : 'home'; arg = a || '';
+  if (cur === 'ch') chOpen(parts);
+  if (rec) { try { rec.abort(); } catch {} } SP.status = 'idle'; SN.listening = false;
   if (cur === 'workout' && (!W || W.step === 4)) newWorkout();
   if (cur === 'quiz') Q.mode = 'start';
   if (cur === 'kids' && arg && KGAMES.some(g => g[0] === arg)) { newKidsGame(arg); if (arg === 'listen') { const t = KG.q.it[1]; setTimeout(() => { if (cur === 'kids' && arg === 'listen') say(t, .8); }, 500); } }
@@ -721,7 +1014,7 @@ function kidsAnswer(ok){
 }
 document.addEventListener('click', e => {
   const nav = e.target.closest('a[href^="#"]');
-  if (nav && nav.getAttribute('href') === (location.hash || '#home')) { if (cur === 'quiz') { stopTimer(); Q.mode = 'start'; } if (cur === 'workout' && W && W.step === 4) newWorkout(); render(); window.scrollTo(0, 0); return; }
+  if (nav && nav.getAttribute('href') === (location.hash || '#home')) { if (cur === 'quiz') { stopTimer(); Q.mode = 'start'; } if (cur === 'ch') chOpen(['ch']); if (cur === 'workout' && W && W.step === 4) newWorkout(); render(); window.scrollTo(0, 0); return; }
   const el = e.target.closest('[data-act]'); if (!el) return;
   const a = el.dataset.act;
   if (a === 'closeModal') { if (e.target === el) $('#modalHost').innerHTML = ''; return; }

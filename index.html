@@ -254,6 +254,81 @@ textarea{width:100%;border:1px solid var(--line);border-radius:12px;padding:12px
 }
 .confetti{position:fixed;top:-20px;width:10px;height:14px;border-radius:3px;z-index:70;pointer-events:none;animation:fall 1.4s ease-in forwards}
 
+/* practice studio — soft tints, one accent per tool */
+.t-speak{--t:#FFF0EB;--ta:#D4553A;--tb:#FFE0D6}
+.t-sound{--t:#F2EFFF;--ta:#6650C8;--tb:#E4DEFF}
+.t-build{--t:#E9F7F0;--ta:#16875B;--tb:#D2EFE1}
+.t-dict{--t:#EAF3FE;--ta:#2A6FC9;--tb:#D6E7FC}
+.t-chal{--t:#FFF5E0;--ta:#B9740A;--tb:#FCE8BF}
+.t-hunt{--t:#EEF1F6;--ta:#0F1A2E;--tb:#DFE4EC}
+@media (prefers-color-scheme: dark){
+  .t-speak{--t:#2A1914;--ta:#FF8F73;--tb:#3B231C}
+  .t-sound{--t:#1D1A33;--ta:#A898FF;--tb:#2A2547}
+  .t-build{--t:#11261D;--ta:#4FD39C;--tb:#183526}
+  .t-dict{--t:#131F33;--ta:#7FB2F7;--tb:#1B2C47}
+  .t-chal{--t:#2A2010;--ta:#F2B54A;--tb:#3A2C14}
+  .t-hunt{--t:#151C2B;--ta:#E7ECF5;--tb:#202A3D}
+}
+.studio-hero{border-radius:22px;padding:22px 20px;color:#fff;background:linear-gradient(135deg,#1F2B57 0%,#3A2F6B 55%,#7A3E5C 100%);position:relative;overflow:hidden}
+.studio-hero::after{content:"";position:absolute;right:-40px;top:-40px;width:180px;height:180px;border-radius:50%;background:radial-gradient(circle,rgba(255,180,140,.35),transparent 70%)}
+.studio-hero p{color:#D9DCF0}
+.tools{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.tool{background:var(--t);border:1px solid var(--tb);border-radius:20px;padding:16px;text-decoration:none;color:var(--ink);display:flex;flex-direction:column;gap:8px;min-height:150px;position:relative;transition:transform .15s}
+.tool:hover{transform:translateY(-2px)}
+.tool .ic{width:46px;height:46px;border-radius:14px;background:var(--ta);color:var(--t);display:grid;place-items:center}
+.tool .ic svg{width:24px;height:24px}
+.tool b{font-size:17px;line-height:1.25}
+.tool small{color:var(--muted);font-size:13px;line-height:1.4}
+.tool .new{position:absolute;top:12px;right:12px;font-size:11px;font-weight:800;letter-spacing:.06em;background:var(--ta);color:var(--t);border-radius:999px;padding:2px 8px}
+.tool.wide{grid-column:1/-1;flex-direction:row;align-items:center;min-height:auto}
+.tool.wide .ic{flex:none}
+.tpanel{background:var(--t);border:1px solid var(--tb);border-radius:22px;padding:20px}
+.tpanel .eyebrow{color:var(--ta)}
+.tbtn{background:var(--ta);border-color:var(--ta);color:var(--t)}
+.tbtn:hover{filter:brightness(1.06)}
+.say-big{font-size:24px;font-weight:700;line-height:1.4;font-family:var(--f-display)}
+.mic-wrap{display:flex;flex-direction:column;align-items:center;gap:10px;padding:8px 0}
+.mic{width:104px;height:104px;border-radius:50%;border:0;background:var(--ta);color:var(--t);display:grid;place-items:center;position:relative;box-shadow:0 10px 30px -10px var(--ta)}
+.mic svg{width:42px;height:42px}
+.mic::before,.mic::after{content:"";position:absolute;inset:0;border-radius:50%;border:3px solid var(--ta);opacity:0}
+.mic.on::before{animation:ring 1.6s ease-out infinite}
+.mic.on::after{animation:ring 1.6s ease-out .8s infinite}
+@keyframes ring{0%{transform:scale(1);opacity:.6}100%{transform:scale(1.7);opacity:0}}
+.wave{display:flex;gap:4px;align-items:center;height:26px}
+.wave i{width:5px;border-radius:3px;background:var(--ta);height:6px}
+.wave.on i{animation:wv 1s ease-in-out infinite}
+.wave i:nth-child(2){animation-delay:.1s}.wave i:nth-child(3){animation-delay:.2s}.wave i:nth-child(4){animation-delay:.3s}.wave i:nth-child(5){animation-delay:.4s}
+@keyframes wv{0%,100%{height:6px}50%{height:26px}}
+.words-res{display:flex;flex-wrap:wrap;gap:6px}
+.words-res span{font-size:18px;font-weight:700;padding:3px 10px;border-radius:10px}
+.w-ok{background:var(--good-soft);color:var(--good)}
+.w-bad{background:var(--bad-soft);color:var(--bad)}
+.w-extra{background:var(--sunk);color:var(--muted);text-decoration:line-through}
+.live{min-height:28px;color:var(--muted);font-style:italic;text-align:center}
+.meter{height:12px;border-radius:99px;background:var(--tb);overflow:hidden}
+.meter i{display:block;height:100%;border-radius:99px;background:var(--ta);transition:width .5s}
+.pairs{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.pairbtn{border:3px solid var(--tb);background:var(--surface);border-radius:20px;padding:22px 10px;font-family:var(--f-display);font-size:28px;font-weight:800;color:var(--ink)}
+.pairbtn.good{border-color:var(--good);background:var(--good-soft)}
+.pairbtn.bad{border-color:var(--bad);background:var(--bad-soft)}
+.tip{background:var(--surface);border-left:4px solid var(--ta);border-radius:12px;padding:12px 14px;font-size:15px}
+.slot{min-height:64px;border:2px dashed var(--tb);border-radius:16px;padding:10px;display:flex;flex-wrap:wrap;gap:8px;align-content:flex-start;background:var(--surface)}
+.slot.ok{border-color:var(--good);border-style:solid;background:var(--good-soft)}
+.slot.no{border-color:var(--bad);border-style:solid;background:var(--bad-soft)}
+.tilebox{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+.tile{border:1px solid var(--tb);background:var(--surface);border-radius:12px;padding:8px 14px;font-size:18px;font-weight:700;box-shadow:0 3px 0 var(--tb);color:var(--ink);min-height:44px}
+.tile:active{transform:translateY(2px);box-shadow:0 1px 0 var(--tb)}
+.tile.used{visibility:hidden}
+.speeds{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.speeds button{border:2px solid var(--tb);background:var(--surface);border-radius:14px;padding:10px 16px;font-weight:700;min-height:48px;color:var(--ink)}
+.speeds button.main{background:var(--ta);color:var(--t);border-color:var(--ta)}
+.vs{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center;text-align:center}
+.vs .p{background:var(--surface);border-radius:16px;padding:14px 8px;border:1px solid var(--tb)}
+.vs .p b{display:block;font-family:var(--f-display);font-size:34px;font-weight:800}
+.vs .mid{font-family:var(--f-display);font-weight:800;color:var(--ta)}
+.linkbox{background:var(--surface);border:1px dashed var(--tb);border-radius:12px;padding:10px 12px;font-size:13px;word-break:break-all;color:var(--muted)}
+@media (prefers-reduced-motion: reduce){.mic.on::before,.mic.on::after,.wave.on i{animation:none}}
+
 .tabbar{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--line);z-index:30;
   padding-bottom:env(safe-area-inset-bottom,0px);padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)}
 .tabbar .in{max-width:720px;margin:0 auto;display:grid;grid-template-columns:repeat(5,1fr)}
@@ -286,7 +361,7 @@ footer.credit a{color:var(--muted)}
 
 <nav class="tabbar" aria-label="মেনু"><div class="in">
   <a href="#home" data-nav="home"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6h-6v6H4a1 1 0 0 1-1-1z"/></svg>হোম</a>
-  <a href="#quiz" data-nav="quiz"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5M8.5 11l2 2 3.5-3.5"/></svg>ভুল ধরো</a>
+  <a href="#practice" data-nav="practice"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>অনুশীলন</a>
   <a href="#learn" data-nav="learn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M4 19V5M8 7h7"/></svg>শিখুন</a>
   <a href="#kids" data-nav="kids"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M8.5 14.5a4 4 0 0 0 7 0M9 9.5h.01M15 9.5h.01"/></svg>কিডস</a>
   <a href="#progress" data-nav="progress"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>প্রোগ্রেস</a>
@@ -302,6 +377,7 @@ footer.credit a{color:var(--muted)}
 <script src="data-freelance-1.js"></script>
 <script src="data-freelance-2.js"></script>
 <script src="data-kids.js"></script>
+<script src="data-practice.js"></script>
 <script src="app.js"></script>
 <script>
 if ('serviceWorker' in navigator) { window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {})); }
