@@ -237,14 +237,15 @@ const stepsBar = (s, total) => `<div class="steps">${Array.from({length:total}, 
 function qBlock(q, answered, prefix){
   const stem = q.type === 'tf'
     ? `<div class="card pop"><div class="q">এই বাক্যটা কি সঠিক?</div><div class="qtext">${esc(q.stem)}</div></div>`
+    : q.type === 'fill' ? `<div class="card pop"><div class="q">শূন্যস্থানে কোনটা বসবে?</div><div class="qtext">${esc(q.stem).replace('___', '<span class="blank">______</span>')}</div></div>`
     : `<div class="card pop"><div class="q">কোন বাক্যটা সঠিক?</div></div>`;
   return `${stem}<div class="opts">${q.opts.map((o, i) => {
       let cls = ''; if (answered !== null) { if (o.ok) cls = 'good'; else if (i === answered) cls = 'bad'; }
-      return `<button class="opt ${cls}" data-act="${prefix}" data-i="${i}" ${answered !== null ? 'disabled' : ''}>${esc(o.t)}</button>`; }).join('')}</div>
+      return `<button class="opt ${cls}" data-act="${prefix}" data-i="${i}" ${answered !== null ? 'disabled' : ''}>${o.t === '—' ? '<i>কিছু বসবে না</i>' : esc(o.t)}</button>`; }).join('')}</div>
     ${answered !== null ? `<div class="explain ${q.opts[answered].ok ? 'good' : 'bad'} pop"><b>${q.opts[answered].ok ? 'একদম ঠিক!' : 'এবার হয়নি।'}</b>
-      ${q.type === 'tf' ? `<div>সঠিক রূপ: <b style="display:inline">${esc(q.m[1])}</b></div>` : ''}${esc(q.m[2])}
+      ${q.type === 'tf' || q.type === 'fill' ? `<div>সঠিক বাক্য: <b style="display:inline">${esc(q.m[1])}</b></div>` : ''}${esc(q.m[2])}
       <div class="row" style="margin-top:8px">${sayBtn(q.m[1])}<span class="small muted">সঠিকটা শুনুন</span></div></div>
-      <button class="btn primary big" data-act="${prefix}Next">পরেরটা</button>` : ''}`;
+      <button class="btn primary big nextbtn" data-act="${prefix}Next">পরেরটা</button>` : ''}`;
 }
 V.workout = () => {
   if (!W) newWorkout();
@@ -336,7 +337,8 @@ V.quiz = () => {
         <div class="bar"><i style="width:${seen/total*100}%"></i></div></div>
       <div class="modes">${QKINDS.map(([k, n, d, ic]) => `<button class="mode" data-act="qkind" data-k="${k}" aria-pressed="${Q.kind === k}"><span class="ic">${svgI(ic)}</span><span class="grow"><b>${n}</b><small>${d}</small></span>${k === 'speed' && locksOn() ? `<span class="tag">প্রিমিয়াম</span>` : ''}</button>`).join('')}</div>
       <div><div class="eyebrow" style="margin-bottom:8px">বিষয়</div><div class="chips">${cats.map(([k, v]) => `<button class="chip" data-act="qcat" data-k="${k}" aria-pressed="${Q.cat === k}">${v}</button>`).join('')}</div></div>
-      <button class="btn primary big" data-act="qstart">শুরু করুন</button>
+      <button class="btn primary big" data-act="qstart">একা খেলুন</button>
+      <div class="two"><button class="btn big" data-act="qfriend">⚔️ বন্ধুর সাথে</button><a class="btn big" href="#room">📞 গ্রুপে খেলুন</a></div>
       <button class="btn big" data-act="qbrowse">সব ভুল ব্যাখ্যাসহ দেখুন</button>
       ${credit()}</section>`;
   }
@@ -358,6 +360,7 @@ V.quiz = () => {
         <h2 class="h2">${msg}</h2><p class="muted small">+${bn(Q.score*5)} XP যোগ হয়েছে</p></div>
       <button class="btn primary big" data-act="shareQuiz">${ICON.share} বন্ধুদের চ্যালেঞ্জ দিন</button>
       <button class="btn big" data-act="qstart">আবার খেলুন (নতুন প্রশ্ন)</button>
+      <button class="btn big" data-act="qfriend">⚔️ বন্ধুকে এই খেলায় চ্যালেঞ্জ দিন</button>
       ${Q.wrong.length ? `<div class="eyebrow" style="margin-top:6px">যেগুলো ভুল হয়েছে</div><div class="mlist">${Q.wrong.map(mistakeItem).join('')}</div>` : ''}
       <button class="btn ghost" data-act="qhome">← Mistakes Hunter</button></section>`;
   }
@@ -441,7 +444,7 @@ V.words = () => {
     return `<section class="view">${head}${stepsBar(WQ.i, 10)}
       <div class="card pop center"><div class="q">${q.type === 'syn' ? 'এই শব্দের সমার্থক কোনটা?' : 'এই শব্দের বাংলা মানে কী?'}</div><div class="flash" style="min-height:auto;cursor:default"><div class="w">${esc(q.w[0])}</div></div><div class="row" style="justify-content:center">${sayBtn(q.w[0])}</div></div>
       <div class="opts">${q.opts.map((o, i) => { let cls = ''; if (WQ.answered !== null) { if (o.ok) cls = 'good'; else if (i === WQ.answered) cls = 'bad'; } return `<button class="opt ${cls}" data-act="wqa" data-i="${i}" ${WQ.answered !== null ? 'disabled' : ''}>${esc(o.t)}</button>`; }).join('')}</div>
-      ${WQ.answered !== null ? `<div class="explain ${q.opts[WQ.answered].ok ? 'good' : 'bad'} pop"><b>${esc(q.w[0])} = ${esc(q.w[2])}</b>সমার্থক: ${esc(q.w[4])}<br><span class="muted">“${esc(q.w[3])}”</span></div><button class="btn primary big" data-act="wqNext">পরেরটা</button>` : ''}</section>`;
+      ${WQ.answered !== null ? `<div class="explain ${q.opts[WQ.answered].ok ? 'good' : 'bad'} pop"><b>${esc(q.w[0])} = ${esc(q.w[2])}</b>সমার্থক: ${esc(q.w[4])}<br><span class="muted">“${esc(q.w[3])}”</span></div><button class="btn primary big nextbtn" data-act="wdNext">পরেরটা</button>` : ''}</section>`;
   }
   return `<section class="view">${head}<p class="muted small">প্রতিদিন নতুন ৫টা শব্দ। স্পিকারে চাপ দিয়ে উচ্চারণ শুনুন।</p><div class="mlist">${todaysWords().map(wordCard).join('')}</div>${credit()}</section>`;
 };
@@ -881,30 +884,64 @@ V.dictation = () => {
 };
 
 /* ----- 6. friend challenge ----- */
-let CH = { seed:0, from:null, mode:'intro', qs:[], i:0, answered:null, score:0 };
-function chQuestions(seed){ const r = rng(seed); return shuffle(D.MISTAKES, r).slice(0, 10).map(m => ({ type:'pick', m, opts: shuffle([{t:m[0], ok:false}, {t:m[1], ok:true}], r) })); }
-function chLink(){ return `${SITE}#ch/${CH.seed}/${CH.score}/${encodeURIComponent((P.name || 'বন্ধু').slice(0, 24))}`; }
+const CHB = window.EG_CHALLENGE || {};
+const LEVELS3 = [['easy','সহজ','🌱'],['medium','মাঝারি','🔥'],['hard','কঠিন','🏆']];
+const lvlName = k => (LEVELS3.find(l => l[0] === k) || LEVELS3[1])[1];
+const fillQ = (q, r) => ({ type:'fill', stem:q[0], m:[null, q[0].replace('___', q[1] === '—' ? '' : q[1]).replace(/\s+/g, ' ').replace(' .', '.'), q[4]], opts: shuffle([{t:q[1], ok:true}, {t:q[2], ok:false}, {t:q[3], ok:false}], r) });
+function chQuestions(seed, level){ const bank = CHB[level] || CHB.medium || []; const r = rng(seed); return shuffle(bank, r).slice(0, 10).map(q => fillQ(q, r)); }
+const GKINDS = [['fill','শূন্যস্থান পূরণ','✍️','৩ অপশন · ৩ লেভেল'],['mh','ভুল ধরো','🔍','কোন বাক্যটা সঠিক?'],['tf','সত্য না মিথ্যা','⚖️','বাক্যটা ঠিক নাকি ভুল'],['speed','স্পিড রাউন্ড','⚡','৬০ সেকেন্ডে যত পারো']];
+const gkName = k => (GKINDS.find(g => g[0] === k) || GKINDS[0])[1];
+const isKind = k => GKINDS.some(g => g[0] === k);
+const SPEED_SECS = 60;
+function gameQs(seed, kind, level){
+  const r = rng(seed);
+  const pick = m => ({ type:'pick', m, opts: shuffle([{t:m[0], ok:false}, {t:m[1], ok:true}], r) });
+  if (kind === 'mh') return shuffle(D.MISTAKES, r).slice(0, 10).map(pick);
+  if (kind === 'tf') return shuffle(D.MISTAKES, r).slice(0, 10).map(m => { const right = r() < .5; return { type:'tf', m, stem: right ? m[1] : m[0], opts:[{t:'✓ সঠিক বাক্য', ok:right}, {t:'✗ ভুল বাক্য', ok:!right}] }; });
+  if (kind === 'speed') return shuffle(D.MISTAKES, r).slice(0, 80).map(pick);
+  return chQuestions(seed, level);
+}
+const scoreTxt = (score, kind) => kind === 'speed' ? `${bn(score)} টা` : `${bn(score)}/১০`;
+const kindLabel = (kind, level) => kind === 'fill' || !kind ? `${gkName('fill')} · ${lvlName(level || 'medium')}` : gkName(kind);
+const kindSeg = (act, cur) => `<div class="kindgrid" role="group" aria-label="খেলার ধরন">${GKINDS.map(([k, n, e, d]) => `<button data-act="${act}" data-k="${k}" aria-pressed="${cur === k}"><span class="e">${e}</span><b>${n}</b><small>${d}</small></button>`).join('')}</div>`;
+function speedBox(q, answered, act){
+  const opts = q.opts.map((o, i) => { let cls = ''; if (answered !== null) { if (o.ok) cls = 'good'; else if (i === answered) cls = 'bad'; }
+    return `<button class="opt ${cls}" data-act="${act}" data-i="${i}" ${answered !== null ? 'disabled' : ''}>${esc(o.t)}</button>`; }).join('');
+  return `<div class="card pop"><div class="q">কোন বাক্যটা সঠিক?</div></div><div class="opts">${opts}</div>`;
+}
+let CH = { seed:0, from:null, mode:'intro', qs:[], i:0, answered:null, score:0, level: P.chLevel || 'easy', kind: P.chKind || 'fill', left:SPEED_SECS };
+let chTimer = null;
+const chStop = () => { if (chTimer) { clearInterval(chTimer); chTimer = null; } };
+function chFinish(){ chStop(); CH.mode = 'result'; if (!CH.from || CH.score >= CH.from.score) confetti(); render(); window.scrollTo(0, 0); }
+function chLink(){ return `${SITE}#ch/${CH.seed}/${CH.score}/${encodeURIComponent((P.name || 'বন্ধু').slice(0, 24))}/${CH.level}/${CH.kind}`; }
+const lvlSeg = (act, cur) => `<div class="lvlseg" role="group" aria-label="লেভেল">${LEVELS3.map(([k, n, e]) => `<button data-act="${act}" data-k="${k}" aria-pressed="${cur === k}"><span>${e}</span>${n}<small>${bn((CHB[k] || []).length)}টা প্রশ্ন</small></button>`).join('')}</div>`;
 function chOpen(parts){
   const seed = parseInt(parts[1], 10);
-  CH = { seed: seed > 0 ? seed : Math.floor(Math.random()*9e8) + 1e8, from:null, mode:'intro', qs:[], i:0, answered:null, score:0 };
-  if (seed > 0 && parts[2] !== undefined) { let name = 'বন্ধু'; try { name = decodeURIComponent(parts[3] || '') || 'বন্ধু'; } catch {} CH.from = { score: Math.max(0, Math.min(10, parseInt(parts[2], 10) || 0)), name: name.slice(0, 24) }; }
+  const lv = LEVELS3.some(l => l[0] === parts[4]) ? parts[4] : (P.chLevel || 'easy');
+  chStop();
+  const kd = isKind(parts[5]) ? parts[5] : (seed > 0 && parts[2] !== undefined ? 'fill' : (P.chKind || 'fill'));
+  CH = { seed: seed > 0 ? seed : Math.floor(Math.random()*9e8) + 1e8, from:null, mode:'intro', qs:[], i:0, answered:null, score:0, level: lv, kind: kd, left:SPEED_SECS };
+  if (seed > 0 && parts[2] !== undefined) { let name = 'বন্ধু'; try { name = decodeURIComponent(parts[3] || '') || 'বন্ধু'; } catch {} CH.from = { score: Math.max(0, Math.min(99, parseInt(parts[2], 10) || 0)), name: name.slice(0, 24) }; }
 }
 V.ch = () => {
   const head = toolHead('#practice', 'বন্ধুকে চ্যালেঞ্জ', CH.from ? `${esc(CH.from.name)} আপনাকে চ্যালেঞ্জ দিয়েছে!` : 'বন্ধুকে চ্যালেঞ্জ দিন', '');
   if (CH.mode === 'intro') return `<section class="view t-chal">${head}
-    <div class="tpanel center">${CH.from ? `<div class="eyebrow">${esc(CH.from.name)} এর স্কোর</div><div class="say-big" style="font-size:56px;color:var(--ta)">${bn(CH.from.score)}/১০</div><p>একই ১০টা প্রশ্ন আপনিও পাবেন। দেখি কে জেতে!</p>`
-      : `<div style="font-size:48px">⚔️</div><p style="margin-top:6px">আপনি ১০টা প্রশ্নের উত্তর দেবেন। তারপর একটা লিংক পাবেন। বন্ধু সেই লিংকে গেলে <b>হুবহু একই প্রশ্ন</b> পাবে, আর শেষে দুজনের স্কোর পাশাপাশি দেখাবে।</p>`}</div>
+    <div class="tpanel center">${CH.from ? `<div class="eyebrow">${esc(CH.from.name)} এর স্কোর · ${kindLabel(CH.kind, CH.level)}</div><div class="say-big" style="font-size:56px;color:var(--ta)">${scoreTxt(CH.from.score, CH.kind)}</div><p>${CH.kind === 'speed' ? `${bn(SPEED_SECS)} সেকেন্ডে একই প্রশ্নগুলো আপনিও পাবেন।` : 'একই ১০টা প্রশ্ন আপনিও পাবেন।'} দেখি কে জেতে!</p>`
+      : `<div style="font-size:48px">⚔️</div><p style="margin-top:6px">খেলা শেষে একটা লিংক পাবেন। বন্ধু সেই লিংকে গেলে <b>হুবহু একই প্রশ্ন</b> পাবে, আর শেষে দুজনের স্কোর পাশাপাশি দেখাবে।</p>`}</div>
+    ${CH.from ? '' : `<div class="eyebrow" style="color:var(--ta)">খেলার ধরন বাছুন</div>${kindSeg('chkind', CH.kind)}${CH.kind === 'fill' ? `<div class="eyebrow" style="color:var(--ta)">লেভেল বাছুন</div>${lvlSeg('chlvl', CH.level)}` : ''}`}
     <label class="small muted" for="chName">আপনার নাম (বন্ধুরা দেখবে)</label>
     <input class="search" id="chName" maxlength="24" placeholder="যেমন: Rahim" value="${esc(P.name || '')}">
     <button class="btn tbtn big" data-act="chstart">${CH.from ? 'চ্যালেঞ্জ গ্রহণ করুন' : 'শুরু করুন'}</button>
     ${credit()}</section>`;
   if (CH.mode === 'play') { const q = CH.qs[CH.i];
-    return `<section class="view t-chal">${stepsBar(CH.i, 10)}<div class="row between nowrap"><div class="eyebrow" style="color:var(--ta)">চ্যালেঞ্জ · প্রশ্ন ${bn(CH.i+1)}/১০</div><span class="small muted">স্কোর ${bn(CH.score)}</span></div>${qBlock(q, CH.answered, 'cha')}</section>`; }
+    if (CH.kind === 'speed') return `<section class="view t-chal"><div class="row between nowrap"><div class="eyebrow" style="color:var(--ta)">⚡ স্পিড রাউন্ড</div><span class="timer" id="chTimer">${bn(CH.left)}s</span><span class="small muted">স্কোর ${bn(CH.score)}</span></div>${speedBox(q, CH.answered, 'chs')}</section>`;
+    return `<section class="view t-chal">${stepsBar(CH.i, 10)}<div class="row between nowrap"><div class="eyebrow" style="color:var(--ta)">${kindLabel(CH.kind, CH.level)} · ${bn(CH.i+1)}/১০</div><span class="small muted">স্কোর ${bn(CH.score)}</span></div>${qBlock(q, CH.answered, 'cha')}</section>`; }
   const me = CH.score, f = CH.from, link = chLink();
   const verdict = !f ? 'এবার বন্ধুকে পাঠান!' : me > f.score ? `আপনি জিতেছেন! 🏆` : me === f.score ? 'ড্র! দুজনেই সমান 🤝' : `${esc(f.name)} এবার জিতেছে। আবার চেষ্টা করুন!`;
   return `<section class="view t-chal">${head}
     <div class="tpanel center pop"><div class="eyebrow">ফলাফল</div>
-      ${f ? `<div class="vs" style="margin-top:10px"><div class="p"><span class="small muted">আপনি</span><b>${bn(me)}</b></div><div class="mid">VS</div><div class="p"><span class="small muted">${esc(f.name)}</span><b>${bn(f.score)}</b></div></div>` : `<div class="say-big" style="font-size:56px;color:var(--ta)">${bn(me)}/১০</div>`}
+      ${f ? `<div class="vs" style="margin-top:10px"><div class="p"><span class="small muted">আপনি</span><b>${bn(me)}</b></div><div class="mid">VS</div><div class="p"><span class="small muted">${esc(f.name)}</span><b>${bn(f.score)}</b></div></div>` : `<div class="say-big" style="font-size:56px;color:var(--ta)">${scoreTxt(me, CH.kind)}</div>`}
+      <p class="small muted" style="margin-top:6px">${kindLabel(CH.kind, CH.level)}</p>
       <h2 class="h2" style="margin-top:12px">${verdict}</h2></div>
     <button class="btn tbtn big" data-act="chshare">${ICON.share} ${f ? 'পাল্টা চ্যালেঞ্জ পাঠান' : 'বন্ধুকে চ্যালেঞ্জ পাঠান'}</button>
     <div class="linkbox">${esc(link)}</div>
@@ -961,10 +998,16 @@ document.addEventListener('click', e => {
   if (a === 'dcnext') { DC.round++; if (DC.round < DC.total) { newDict(); render(); setTimeout(() => say(DC.q.en, DC.speed), 300); } else render(); return; }
   if (a === 'dcagain') { DC.round = 0; DC.sum = 0; newDict(); render(); return; }
   /* challenge */
-  if (a === 'chstart') { const nm = ($('#chName') || {}).value || ''; P.name = nm.trim(); save(); CH.qs = chQuestions(CH.seed); CH.mode = 'play'; CH.i = 0; CH.score = 0; CH.answered = null; render(); window.scrollTo(0, 0); return; }
+  if (a === 'chlvl') { CH.level = el.dataset.k; P.chLevel = CH.level; save(); document.querySelectorAll('[data-act="chlvl"]').forEach(b => b.setAttribute('aria-pressed', String(b === el))); return; }
+  if (a === 'chkind') { CH.kind = el.dataset.k; P.chKind = CH.kind; save(); const nm = $('#chName'); if (nm) { P.name = nm.value.trim(); save(); } render(); return; }
+  if (a === 'chs') { if (CH.answered !== null || CH.mode !== 'play') return; const i = +el.dataset.i, q = CH.qs[CH.i]; CH.answered = i; const ok = q.opts[i].ok; if (ok) { CH.score++; addXP(3); } render();
+    setTimeout(() => { if (CH.mode !== 'play') return; CH.i++; CH.answered = null; if (CH.i >= CH.qs.length) { chFinish(); return; } render(); }, ok ? 300 : 900); return; }
+  if (a === 'chstart') { const nm = ($('#chName') || {}).value || ''; P.name = nm.trim(); save(); CH.qs = gameQs(CH.seed, CH.kind, CH.level); CH.mode = 'play'; CH.i = 0; CH.score = 0; CH.answered = null; CH.left = SPEED_SECS; chStop();
+    if (CH.kind === 'speed') chTimer = setInterval(() => { CH.left--; const t = $('#chTimer'); if (t) t.textContent = bn(CH.left) + 's'; if (CH.left <= 0) chFinish(); }, 1000);
+    render(); window.scrollTo(0, 0); return; }
   if (a === 'cha') { const i = +el.dataset.i, q = CH.qs[CH.i]; CH.answered = i; if (q.opts[i].ok) { CH.score++; addXP(5); } render(); return; }
-  if (a === 'chaNext') { CH.i++; CH.answered = null; if (CH.i >= 10) { CH.mode = 'result'; if (!CH.from || CH.score >= CH.from.score) confetti(); } render(); window.scrollTo(0, 0); return; }
-  if (a === 'chshare') { const link = chLink(); const text = `⚔️ English Gym চ্যালেঞ্জ! আমি ১০ এ ${bn(CH.score)} পেয়েছি। একই প্রশ্নে তুমি কয়টা পারবে?`;
+  if (a === 'chaNext') { CH.i++; CH.answered = null; if (CH.i >= CH.qs.length) { chFinish(); return; } render(); window.scrollTo(0, 0); return; }
+  if (a === 'chshare') { const link = chLink(); const text = `⚔️ English Gym চ্যালেঞ্জ (${kindLabel(CH.kind, CH.level)})! আমার স্কোর ${scoreTxt(CH.score, CH.kind)}। একই প্রশ্নে তুমি কয়টা পারবে?`;
     if (navigator.share) navigator.share({ title:'English Gym চ্যালেঞ্জ', text, url:link }).catch(() => {}); else copy(text + '\n' + link); return; }
   if (a === 'chcopy') { copy(chLink()); return; }
 });
@@ -1023,7 +1066,7 @@ const fbErr = e => { const m = String(e && (e.code || e.message) || e);
   return 'কিছু একটা সমস্যা হয়েছে, একটু পরে আবার চেষ্টা করুন।'; };
 
 function roomLeave(){
-  callLeave();
+  callLeave(); if (rbTimer) { clearInterval(rbTimer); rbTimer = null; }
   RM.refs.forEach(([ref, ev, fn]) => { try { ref.off(ev, fn); } catch {} });
   RM.refs = [];
   if (FB && RM.code && RM.phase === 'room') { try { FB.db.ref(`rooms/${RM.code}/members/${FB.uid}`).remove(); } catch {} }
@@ -1071,12 +1114,15 @@ function roomListen(){
   on(base.child('call'), 'value', s => { CALL.list = s.val() || {}; callSync(); });
   render();
 }
-async function sendMsg(text){
-  text = String(text || '').trim().slice(0, 500); if (!text || !FB || RM.phase !== 'room') return;
-  if (Date.now() - RM.lastSend < 1000) { toast('একটু ধীরে লিখুন 🙂'); return; }
-  RM.lastSend = Date.now();
-  try { await FB.db.ref(`rooms/${RM.code}/messages`).push({ uid: FB.uid, name: myName(), text, t: FB.TS }); }
-  catch (e) { toast(fbErr(e)); }
+function sendMsg(text){
+  text = String(text || '').trim().slice(0, 500); if (!text || !FB || RM.phase !== 'room') return false;
+  const wait = 500 - (Date.now() - RM.lastSend);
+  if (wait > 0) { RM.lastSend = Date.now() + wait; setTimeout(() => sendNow(text), wait); return true; }
+  RM.lastSend = Date.now(); sendNow(text); return true;
+}
+function sendNow(text){
+  if (!FB || RM.phase !== 'room') return;
+  FB.db.ref(`rooms/${RM.code}/messages`).push({ uid: FB.uid, name: myName(), text, t: FB.TS }).catch(e => { toast(fbErr(e)); const inp = $('#rmInput'); if (inp && !inp.value) { inp.value = text; RM.draft = text; } });
 }
 let unread = 0;
 function bumpUnread(m){ if (RM.tab === 'chat' || !FB || m.uid === FB.uid) return; unread++; const b = $('#unread'); if (b) { b.textContent = bn(unread); b.hidden = false; } }
@@ -1276,22 +1322,33 @@ function callAreaHTML(){
 const callMiniHTML = () => CALL.on && RM.tab !== 'call' ? `<button class="callmini" data-act="rmTab" data-k="call"><span class="live-dot"></span>কলে আছেন · ${bn(Object.keys(CALL.list).length)} জন<span class="grow"></span><span>${CALL.mic ? '🎙️' : '🔇'} খুলুন →</span></button>` : '';
 
 /* ----- live battle ----- */
+const battlePicker = () => `<div class="eyebrow" style="color:var(--ta)">খেলার ধরন</div>${kindSeg('rbkind', RM.kind || 'fill')}${(RM.kind || 'fill') === 'fill' ? `<div class="eyebrow" style="color:var(--ta)">লেভেল</div>${lvlSeg('rblvl', RM.level || 'easy')}` : ''}`;
 function boardHTML(){
   const b = RM.battle, info = b && b.info;
   if (!info) return `<div class="tpanel center"><div style="font-size:44px">⚔️</div><h2 class="h2" style="margin-top:6px">লাইভ চ্যালেঞ্জ</h2><p class="small muted" style="margin-top:6px">একজন শুরু করলে গ্রুপের সবাই একই ১০টা প্রশ্ন পাবে। কে কতটা পারছে, সবাই লাইভ দেখবে।</p></div>
-    <button class="btn tbtn big" data-act="rbNew">চ্যালেঞ্জ শুরু করুন</button>`;
+    ${battlePicker()}<button class="btn tbtn big" data-act="rbNew">চ্যালেঞ্জ শুরু করুন</button>`;
   const players = Object.entries((b.players) || {}).filter(([, p]) => p && p.round === info.round).sort((x, y) => (y[1].score - x[1].score) || (y[1].i - x[1].i));
   const allDone = players.length > 0 && players.every(([, p]) => p.done);
   const top = players.length ? players[0][1].score : 0;
   const mine = FB && b.players && b.players[FB.uid] && b.players[FB.uid].round === info.round ? b.players[FB.uid] : null;
   const playing = RM.play && RM.play.round === info.round && !RM.play.done;
-  return `<div class="tpanel"><div class="row between nowrap"><div><div class="eyebrow">চ্যালেঞ্জ</div><b>${esc(info.by || '')} শুরু করেছে</b></div>${allDone ? '<span class="tag">শেষ</span>' : '<span class="done-badge" style="background:var(--tb);color:var(--ta)">● লাইভ</span>'}</div></div>
-    <div class="board">${players.length ? players.map(([uid, p]) => `<div class="brow ${allDone && p.score === top ? 'win' : ''}">${avatar(p.name, uid)}<div style="min-width:0"><b>${esc(p.name)}${FB && uid === FB.uid ? ' (আপনি)' : ''}</b>${allDone && p.score === top ? ' 🏆' : ''}<div class="small muted">${p.done ? 'শেষ করেছে' : `প্রশ্ন ${bn(Math.min(10, (p.i || 0) + 1))}/১০`}</div><div class="bar"><i style="width:${(p.i || 0) * 10}%"></i></div></div><b class="sc">${bn(p.score || 0)}</b></div>`).join('') : '<p class="small muted center">এখনো কেউ খেলা শুরু করেনি</p>'}</div>
-    ${playing ? '' : mine && mine.done ? `<button class="btn big" data-act="rbNew">আরেকটা নতুন চ্যালেঞ্জ</button>` : `<button class="btn tbtn big" data-act="rbJoin">${mine ? 'চালিয়ে যান' : 'চ্যালেঞ্জে যোগ দিন'}</button>`}`;
+  return `<div class="tpanel"><div class="row between nowrap"><div><div class="eyebrow">চ্যালেঞ্জ · ${kindLabel(info.kind || 'fill', info.level)}</div><b>${esc(info.by || '')} শুরু করেছে</b></div>${allDone ? '<span class="tag">শেষ</span>' : '<span class="done-badge" style="background:var(--tb);color:var(--ta)">● লাইভ</span>'}</div></div>
+    <div class="board">${players.length ? players.map(([uid, p]) => `<div class="brow ${allDone && p.score === top ? 'win' : ''}">${avatar(p.name, uid)}<div style="min-width:0"><b>${esc(p.name)}${FB && uid === FB.uid ? ' (আপনি)' : ''}</b>${allDone && p.score === top ? ' 🏆' : ''}<div class="small muted">${p.done ? 'শেষ করেছে' : info.kind === 'speed' ? '⚡ খেলছে…' : `প্রশ্ন ${bn(Math.min(10, (p.i || 0) + 1))}/১০`}</div><div class="bar"><i style="width:${p.done ? 100 : info.kind === 'speed' ? Math.min(95, (p.i || 0) * 4) : (p.i || 0) * 10}%"></i></div></div><b class="sc">${bn(p.score || 0)}</b></div>`).join('') : '<p class="small muted center">এখনো কেউ খেলা শুরু করেনি</p>'}</div>
+    ${playing ? '' : mine && mine.done ? `${allDone ? battlePicker() : ''}<button class="btn big" data-act="rbNew">আরেকটা নতুন চ্যালেঞ্জ</button>` : `<button class="btn tbtn big" data-act="rbJoin">${mine ? 'চালিয়ে যান' : 'চ্যালেঞ্জে যোগ দিন'}</button>`}`;
 }
 function updateBoard(){ const el = $('#rmBoard'); if (el) el.innerHTML = boardHTML(); }
 function playHTML(){ const pl = RM.play; if (!pl || pl.done) return ''; const q = pl.qs[pl.i];
+  if (pl.kind === 'speed') return `<div class="row between nowrap"><div class="eyebrow" style="color:var(--ta)">⚡ স্পিড রাউন্ড</div><span class="timer" id="rbTimer">${bn(pl.left)}s</span><span class="small muted">স্কোর ${bn(pl.score)}</span></div>${speedBox(q, pl.answered, 'rbs')}`;
   return `${stepsBar(pl.i, 10)}<div class="row between nowrap"><div class="eyebrow" style="color:var(--ta)">প্রশ্ন ${bn(pl.i + 1)}/১০</div><span class="small muted">স্কোর ${bn(pl.score)}</span></div>${qBlock(q, pl.answered, 'rb')}`; }
+let rbTimer = null;
+function rbStartPlay(info, resume){
+  if (rbTimer) { clearInterval(rbTimer); rbTimer = null; }
+  const kind = info.kind || 'fill';
+  const pl = { round: info.round, kind, qs: gameQs(info.seed, kind, info.level || 'medium'), i: resume ? (kind === 'speed' ? resume.i : Math.min(resume.i, 9)) : 0, score: resume ? resume.score : 0, answered:null, done:false, left: SPEED_SECS };
+  if (kind === 'speed') rbTimer = setInterval(() => { pl.left--; const t = $('#rbTimer'); if (t) t.textContent = bn(pl.left) + 's'; if (pl.left <= 0) rbFinish(pl); }, 1000);
+  return pl;
+}
+function rbFinish(pl){ if (rbTimer) { clearInterval(rbTimer); rbTimer = null; } if (pl.done) return; pl.done = true; if (pl.kind !== 'speed') pl.i = 10; sendMsg(`🏁 ${myName()} চ্যালেঞ্জ শেষ করেছে: ${scoreTxt(pl.score, pl.kind)}`); confetti(); pushMine(); if (RM.tab === 'battle') render(); }
 function pushMine(){ const pl = RM.play; if (!pl || !FB) return;
   FB.db.ref(`rooms/${RM.code}/battle/players/${FB.uid}`).set({ name: myName(), round: pl.round, score: pl.score, i: pl.i, done: !!pl.done }).catch(e => toast(fbErr(e))); }
 
@@ -1356,7 +1413,7 @@ document.addEventListener('click', e => {
   if (a === 'rmJoinName') { const nm = ($('#rmName')?.value || '').trim(); if (nm) { P.name = nm.slice(0, 24); save(); } myName(); RM.phase = 'room'; roomListen(); return; }
   if (a === 'rmRetry') { if (RM.code) roomEnter(RM.code); else { RM.phase = 'lobby'; render(); } return; }
   if (a === 'rmTab') { RM.draft = ($('#rmInput') || {}).value ?? RM.draft; RM.tab = el.dataset.k; RM.fresh = false; if (RM.tab === 'chat') unread = 0; render(); if (RM.tab === 'call') renderCall(); if (RM.tab === 'chat') { const b = $('#chatBox'); if (b) b.scrollTop = b.scrollHeight; } return; }
-  if (a === 'rmSend') { const inp = $('#rmInput'); const t = inp ? inp.value : ''; if (!t.trim()) return; sendMsg(t); if (inp) { inp.value = ''; inp.focus(); } RM.draft = ''; return; }
+  if (a === 'rmSend') { e.preventDefault(); const inp = $('#rmInput'); const t = inp ? inp.value : ''; if (!t.trim()) { inp && inp.focus(); return; } if (sendMsg(t)) { if (inp) { inp.value = ''; inp.focus(); } RM.draft = ''; } return; }
   if (a === 'rmQuick') { sendMsg(el.dataset.t); return; }
   if (a === 'rmInvite') { openShareModal(); return; }
   if (a === 'shCopy') { copy(RM.code); return; }
@@ -1369,14 +1426,18 @@ document.addEventListener('click', e => {
   if (a === 'callMic') { toggleMic(); return; }
   if (a === 'callCam') { toggleCam(); return; }
   if (a === 'callLeave') { callLeave(); sendMsg(`👋 ${myName()} কল ছেড়েছে`); renderCall(); updateMembers(); return; }
-  if (a === 'rbNew') { if (!FB) return; const info = { seed: Math.floor(Math.random()*9e8) + 1e8, round: Date.now(), by: myName() };
+  if (a === 'rblvl') { RM.level = el.dataset.k; document.querySelectorAll('[data-act="rblvl"]').forEach(b => b.setAttribute('aria-pressed', String(b === el))); return; }
+  if (a === 'rbNew') { if (!FB) return; const info = { seed: Math.floor(Math.random()*9e8) + 1e8, round: Date.now(), by: myName(), level: RM.level || 'easy', kind: RM.kind || 'fill' };
     FB.db.ref(`rooms/${RM.code}/battle/info`).set(info).then(() => { sendMsg(`⚔️ ${myName()} নতুন চ্যালেঞ্জ শুরু করেছে! চ্যালেঞ্জ ট্যাবে যোগ দিন।`); }).catch(e => toast(fbErr(e)));
-    RM.play = { round: info.round, qs: chQuestions(info.seed), i:0, score:0, answered:null, done:false }; RM.battle = { ...(RM.battle || {}), info }; pushMine(); render(); return; }
+    RM.play = rbStartPlay(info, null); RM.battle = { ...(RM.battle || {}), info }; pushMine(); render(); return; }
   if (a === 'rbJoin') { const info = RM.battle && RM.battle.info; if (!info) return; const mine = RM.battle.players && RM.battle.players[FB.uid];
     const resume = mine && mine.round === info.round ? mine : null;
-    RM.play = { round: info.round, qs: chQuestions(info.seed), i: resume ? Math.min(resume.i, 9) : 0, score: resume ? resume.score : 0, answered:null, done:false }; pushMine(); render(); return; }
+    RM.play = rbStartPlay(info, resume); pushMine(); render(); return; }
   if (a === 'rb') { const pl = RM.play; if (!pl || pl.answered !== null) return; const i = +el.dataset.i; pl.answered = i; if (pl.qs[pl.i].opts[i].ok) { pl.score++; addXP(5); } render(); return; }
-  if (a === 'rbNext') { const pl = RM.play; pl.i++; pl.answered = null; if (pl.i >= 10) { pl.done = true; pl.i = 10; sendMsg(`🏁 ${myName()} চ্যালেঞ্জ শেষ করেছে: ${bn(pl.score)}/১০`); confetti(); } pushMine(); render(); return; }
+  if (a === 'rbNext') { const pl = RM.play; pl.i++; pl.answered = null; if (pl.i >= pl.qs.length) { rbFinish(pl); render(); return; } pushMine(); render(); return; }
+  if (a === 'rbs') { const pl = RM.play; if (!pl || pl.answered !== null || pl.done) return; const i = +el.dataset.i; pl.answered = i; const ok = pl.qs[pl.i].opts[i].ok; if (ok) { pl.score++; addXP(3); } render();
+    setTimeout(() => { if (pl.done) return; pl.i++; pl.answered = null; pushMine(); if (pl.i >= pl.qs.length) { rbFinish(pl); return; } if (RM.tab === 'battle') render(); }, ok ? 300 : 900); return; }
+  if (a === 'rbkind') { RM.kind = el.dataset.k; updateBoard(); return; }
 });
 document.addEventListener('keydown', e => {
   if (e.target.id === 'rmInput' && e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); $('[data-act="rmSend"]')?.click(); }
@@ -1387,6 +1448,9 @@ document.addEventListener('input', e => {
   if (e.target.id === 'rmInput') RM.draft = e.target.value;
   if (e.target.id === 'rmCode') { const v = e.target.value; const c = cleanCode(v); if (/#room\//.test(v) || (c.length === 6 && v.trim().length <= 8)) { e.target.value = c; if (c.length === 6 && e.inputType === 'insertFromPaste') joinFromInput(); } }
 });
+document.addEventListener('pointerdown', e => { if (e.target.closest('.composer .send')) e.preventDefault(); });
+document.addEventListener('focusin', e => { if (e.target.matches('input, textarea')) document.body.classList.add('typing'); });
+document.addEventListener('focusout', e => { if (e.target.matches('input, textarea')) setTimeout(() => { const a = document.activeElement; if (!a || !a.matches('input, textarea')) document.body.classList.remove('typing'); }, 80); });
 window.addEventListener('pagehide', () => { if (FB && RM.code && RM.phase === 'room') { try { FB.db.ref(`rooms/${RM.code}/members/${FB.uid}`).remove(); FB.db.ref(`rooms/${RM.code}/call/${FB.uid}`).remove(); } catch {} } });
 
 /* ================= ROUTER ================= */
@@ -1400,9 +1464,11 @@ function render(){
   if (cur === 'daily') renderDList();
   if (cur === 'freelance') renderFList();
   if (cur === 'room' && RM.phase === 'room' && RM.tab === 'call') renderCall();
+  const ex = app.querySelector('.explain.pop, .tip.pop');
+  if (ex && app.querySelector('.nextbtn')) requestAnimationFrame(() => { const r = ex.getBoundingClientRect(); const over = r.bottom + 170 - innerHeight; if (over > 0) window.scrollBy({ top: over, behavior: 'smooth' }); });
 }
 function go(){
-  stopTimer();
+  stopTimer(); chStop();
   const h = (location.hash || '#home').slice(1); const parts = h.split('/'); const [n, a] = parts;
   cur = V[n] ? n : 'home'; arg = a || '';
   if (cur === 'ch') chOpen(parts);
@@ -1459,6 +1525,7 @@ document.addEventListener('click', e => {
   if (a === 'qkind') { Q.kind = el.dataset.k; render(); return; }
   if (a === 'qcat' || a === 'bcat') { Q.cat = el.dataset.k; if (a === 'bcat') { document.querySelectorAll('[data-act="bcat"]').forEach(c => c.setAttribute('aria-pressed', String(c === el))); renderMList(); } else render(); return; }
   if (a === 'qstart') { startQuiz(); if (Q.mode === 'play') { render(); window.scrollTo(0, 0); } return; }
+  if (a === 'qfriend') { P.chKind = ({ classic:'mh', tf:'tf', speed:'speed' })[Q.kind] || 'mh'; save(); stopTimer(); if (location.hash === '#ch') { chOpen(['ch']); render(); } else location.hash = '#ch'; return; }
   if (a === 'qbrowse') { Q.mode = 'browse'; render(); return; }
   if (a === 'qhome') { stopTimer(); Q.mode = 'start'; render(); return; }
   if (a === 'qa') { const i = +el.dataset.i, q = Q.qs[Q.i]; Q.answered = i; if (q.opts[i].ok) { Q.score++; P.caught++; addXP(5); } else Q.wrong.push(q.m); save(); render(); return; }
@@ -1475,7 +1542,7 @@ document.addEventListener('click', e => {
   if (a === 'learn') { learnWord(el.dataset.w); addXP(2); checkBadges(); if (Wd.tab === 'all') renderWList(); else render(); return; }
   if (a === 'wmore') { wLimit += 40; renderWList(); return; }
   if (a === 'wqa') { const i = +el.dataset.i, q = WQ.qs[WQ.i]; WQ.answered = i; if (q.opts[i].ok) { WQ.score++; addXP(3); learnWord(q.w[0]); } render(); return; }
-  if (a === 'wqNext') { WQ.i++; WQ.answered = null; if (WQ.i >= WQ.qs.length) { P.wordQuizBest = Math.max(P.wordQuizBest, WQ.score); save(); checkBadges(); if (WQ.score >= 8) confetti(); } render(); return; }
+  if (a === 'wdNext') { WQ.i++; WQ.answered = null; if (WQ.i >= WQ.qs.length) { P.wordQuizBest = Math.max(P.wordQuizBest, WQ.score); save(); checkBadges(); if (WQ.score >= 8) confetti(); } render(); return; }
   if (a === 'wqNew') { newWordQuiz(); render(); return; }
   /* daily */
   if (a === 'dcat') { Dy.cat = el.dataset.k; Dy.limit = 40; document.querySelectorAll('[data-act="dcat"]').forEach(c => c.setAttribute('aria-pressed', String(c === el))); renderDList(); return; }
